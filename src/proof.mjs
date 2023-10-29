@@ -18,7 +18,7 @@ class Root extends HTMLElement {
           align-items: flex-end;
         }
 
-        .tree, :host {
+        .tree {
           display: inline-flex;
           flex-wrap: nowrap;
           flex-direction: column;
