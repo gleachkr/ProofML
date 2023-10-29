@@ -106,45 +106,37 @@ class Node extends HTMLElement {
 
       this.stylesheet = document.createElement("style")
 
-      const leftSpace = document.createElement("div")
-      leftSpace.className = "left-space"
-
-      const rightSpace = document.createElement("div")
-      rightSpace.className = "right-space"
-
-      this.content = document.createElement("div")
-      this.content.className = "content"
-
       this.rightLabel = document.createElement("div")
       this.rightLabel.className = "label"
+      const rightSpace = document.createElement("div")
+      rightSpace.className = "right-space"
+      rightSpace.appendChild(this.rightLabel)
+
+      const content = document.createElement("div")
+      const contentSlot = document.createElement("slot")
+      content.className = "content"
+      content.appendChild(contentSlot)
 
       this.leftLabel = document.createElement("div")
       this.leftLabel.className = "label"
+      const leftSpace = document.createElement("div")
+      leftSpace.className = "left-space"
+      leftSpace.appendChild(this.leftLabel)
 
       this.shadowRoot.appendChild(this.stylesheet)
       this.shadowRoot.appendChild(leftSpace)
-      leftSpace.appendChild(this.leftLabel)
-      this.shadowRoot.appendChild(this.content)
+      this.shadowRoot.appendChild(content)
       this.shadowRoot.appendChild(rightSpace)
-      rightSpace.appendChild(this.rightLabel)
 
       this.initialized = true
     }
 
     this.updateStyle()
     this.updateLabel()
-    this.updateText()
 
   }
 
-  //TODO: connect to mutation observer 
-  updateText() {
-    this.text = [... this.childNodes].filter(e => e.nodeType === Node.TEXT_NODE)
-    this.content.innerHTML = ""
-    this.text.map(textnode => this.content.appendChild(textnode.cloneNode()))
-  }
-
-  //TODO: connect to mutation observer on prooftree
+  //TODO: connect to mutation observer on proof-forest
   updateLabel() {
     const noNextTree = !this.getTree().getNextTree()
 
@@ -153,7 +145,7 @@ class Node extends HTMLElement {
     }
   }
 
-  //TODO: connect to mutation observer on proofforest
+  //TODO: connect to mutation observer on proof-forest
   updateStyle() {
     const inForest = this.getTree().getForest()
     const noNextTree = !this.getTree().getNextTree()
