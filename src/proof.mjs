@@ -1,4 +1,4 @@
-const registry = window.customElements
+import {computePosition} from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3/+esm';
 
 class Root extends HTMLElement {
   constructor() {
@@ -106,26 +106,20 @@ class Node extends HTMLElement {
 
       this.stylesheet = document.createElement("style")
 
-      this.rightLabel = document.createElement("div")
-      this.rightLabel.className = "label"
       const rightSpace = document.createElement("div")
       rightSpace.className = "right-space"
-      rightSpace.appendChild(this.rightLabel)
 
-      const content = document.createElement("div")
+      this.content = document.createElement("div")
       const contentSlot = document.createElement("slot")
-      content.className = "content"
-      content.appendChild(contentSlot)
+      this.content.className = "content"
+      this.content.appendChild(contentSlot)
 
-      this.leftLabel = document.createElement("div")
-      this.leftLabel.className = "label"
       const leftSpace = document.createElement("div")
       leftSpace.className = "left-space"
-      leftSpace.appendChild(this.leftLabel)
 
       this.shadowRoot.appendChild(this.stylesheet)
       this.shadowRoot.appendChild(leftSpace)
-      this.shadowRoot.appendChild(content)
+      this.shadowRoot.appendChild(this.content)
       this.shadowRoot.appendChild(rightSpace)
 
       this.initialized = true
@@ -141,7 +135,12 @@ class Node extends HTMLElement {
     const noNextTree = !this.getTree().getNextTree()
 
     if (this.getConsumer() && noNextTree) {
-      this.rightLabel.innerText = this.getConsumer().innerText
+      computePosition(this.content, this.getConsumer(), { placement: 'right'}).then(({x,y}) => {
+          Object.assign(this.getConsumer().style, {
+            left: `${x}px`,
+            top: `calc(${y}px + 1em)`
+          })
+      })
     }
   }
 
@@ -205,7 +204,7 @@ class Inference extends HTMLElement {
   connectedCallback() {
     this.className = "inference"
     this.setAttribute("slot", "inference")
-    this.style.display = "none"
+    this.style.position = "absolute"
   }
 }
 
@@ -223,6 +222,7 @@ class Forest extends HTMLElement {
   }
 }
 
+const registry = window.customElements
 registry.define("proof-forest", Forest)
 registry.define("proof-tree", Tree)
 registry.define("proof-root", Root)
