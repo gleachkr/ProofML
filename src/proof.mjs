@@ -1,4 +1,4 @@
-import {computePosition} from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3/+esm';
+import { computePosition, autoUpdate } from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3/+esm';
 
 class Root extends HTMLElement {
   constructor() {
@@ -133,14 +133,23 @@ class Node extends HTMLElement {
   //TODO: connect to mutation observer on proof-forest
   updateLabel() {
     const noNextTree = !this.getTree().getNextTree()
+    const consumer = this.getConsumer()
+    const content = this.content
 
-    if (this.getConsumer() && noNextTree) {
-      computePosition(this.content, this.getConsumer(), { placement: 'right'}).then(({x,y}) => {
-          Object.assign(this.getConsumer().style, {
+    if (consumer && noNextTree) {
+      this.release = autoUpdate(content, consumer, () => 
+        computePosition(content, consumer, { placement: 'right'})
+        .then(({x,y}) => {
+          Object.assign(consumer.style, {
             left: `${x}px`,
-            top: `calc(${y}px + 1em)`
+            top: `calc(${y}px + 1em)`,
+            height: `min-content`
           })
       })
+      )
+    } else {
+      // release listeners if we're not the label anchor anymore
+      this.release?.()
     }
   }
 
