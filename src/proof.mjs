@@ -96,9 +96,19 @@ class Node extends HTMLElement {
   constructor() {
     super()
     this.attachShadow({ mode: "open" })
+
+    // the observer repositions the label and recalculates whether the right and
+    // left padding should be underlined when new trees appear in the forest
+    // containing this node
+    this.mutationObserver = new MutationObserver(() => {
+      console.log('mutation')
+      this.updateStyle()
+      this.updateLabel()
+    })
   }
 
   connectedCallback() {
+
     if (!this.initialized) {
 
       this.className = "node"
@@ -125,12 +135,21 @@ class Node extends HTMLElement {
       this.initialized = true
     }
 
+    const forest = this.getTree().getForest()
+
+    if (forest) this.mutationObserver.observe(this.getTree().getForest(), {
+      childList: true
+    })
+
     this.updateStyle()
     this.updateLabel()
 
   }
 
-  //TODO: connect to mutation observer on proof-forest
+  disconnectedCallback() {
+    this.mutationObserver.disconnect()
+  }
+
   updateLabel() {
     const noNextTree = !this.getTree().getNextTree()
     const consumer = this.getConsumer()
@@ -153,7 +172,6 @@ class Node extends HTMLElement {
     }
   }
 
-  //TODO: connect to mutation observer on proof-forest
   updateStyle() {
     const inForest = this.getTree().getForest()
     const noNextTree = !this.getTree().getNextTree()
