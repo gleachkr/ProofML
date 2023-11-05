@@ -10,6 +10,12 @@ class Root extends HTMLElement {
     if (!this.initialized) {
       const stylesheet = document.createElement("style")
       stylesheet.textContent = `
+
+        :host {
+          font-size: var(--proofml-font-size, 1em);
+          font-family: var(--proofml-font-family, serif);
+        }
+
         .forest {
           display: flex;
           flex-wrap: nowrap;
@@ -24,7 +30,11 @@ class Root extends HTMLElement {
           flex-direction: column;
         }
 
+        .tree {
+        }
+
         .inference {
+          color: var(--proofml-color, black);
           position:absolute;
           bottom:-.5em;
           font-size:.6em;
@@ -101,7 +111,6 @@ class Node extends HTMLElement {
     // left padding should be underlined when new trees appear in the forest
     // containing this node
     this.mutationObserver = new MutationObserver(() => {
-      console.log('mutation')
       this.updateStyle()
       this.updateLabel()
     })
@@ -173,9 +182,13 @@ class Node extends HTMLElement {
   }
 
   updateStyle() {
-    const inForest = this.getTree().getForest()
-    const noNextTree = !this.getTree().getNextTree()
-    const noPrevTree = !this.getTree().getPrevTree()
+    const myForest = this.getTree().getForest()
+    const myNextTree = this.getTree().getNextTree()
+    const myPrevTree = this.getTree().getPrevTree()
+
+    // TODO: make this configurable for just one forest (not cascading) with
+    // a forest attribute.
+    const borderStyle = "var(--proofml-border, 1px solid black)"
 
     this.stylesheet.textContent = `
       .left-space, .right-space {
@@ -184,13 +197,15 @@ class Node extends HTMLElement {
       }
 
       .right-space {
-        border-bottom: ${noNextTree ? "none" : "1px solid black"};
+        border-bottom: ${myNextTree ? borderStyle : "none" };
         position:relative;
+        padding-left: var(--proofml-kern-left,0);
       }
 
       .left-space {
-        border-bottom: ${noPrevTree ? "none" : "1px solid black"};
+        border-bottom: ${myPrevTree ? borderStyle : "none" };
         position: relative;
+        padding-right: var(--proofml-kern-right,0);
       }
 
       .right-space .label {
@@ -201,7 +216,8 @@ class Node extends HTMLElement {
       }
 
       .content {
-        border-bottom: ${inForest ? "1px solid black" : "none"};
+        color: var(--proofml-color, black);
+        border-bottom: ${myForest ? borderStyle : "none"};
         padding:0 .5em 0 .5em;
       }
 
