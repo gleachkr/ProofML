@@ -63,17 +63,28 @@ class Tree extends HTMLElement {
       const stylesheet = document.createElement("style")
       stylesheet.textContent = ``
 
-      const nodeSlot = document.createElement("slot")
-      nodeSlot.setAttribute("name", "node")
+      this.nodeSlot = document.createElement("slot")
+      this.nodeSlot.setAttribute("name", "node")
 
-      const forestSlot = document.createElement("slot")
-      forestSlot.setAttribute("name", "forest")
+      this.forestSlot = document.createElement("slot")
+      this.forestSlot.setAttribute("name", "forest")
+
+      //TODO cleanup on disconnectedCallback
+      this.nodeSlot.addEventListener("slotchange", () => this.updateForestWidth())
 
       this.shadowRoot.appendChild(stylesheet)
-      this.shadowRoot.appendChild(forestSlot)
-      this.shadowRoot.appendChild(nodeSlot)
+      this.shadowRoot.appendChild(this.forestSlot)
+      this.shadowRoot.appendChild(this.nodeSlot)
       this.initialized = true
     }
+  }
+
+  updateForestWidth() {
+    this.forestSlot.assignedElements().forEach(el => 
+      el.getChildTrees().forEach(tree => 
+        tree.getNode().updateStyle()
+      )
+    )
   }
 
   // get the forest that this tree is in, if any
@@ -83,6 +94,12 @@ class Tree extends HTMLElement {
       : null
   }
 
+  // get the child node
+  getNode() {
+    return this.nodeSlot.assignedElements()[0]
+  }
+
+  // get the next adjacent tree
   getNextTree() {
     let next = this.nextElementSibling
     while (next) {
@@ -92,6 +109,7 @@ class Tree extends HTMLElement {
     return false
   }
 
+  // get the previous adjacent tree
   getPrevTree() {
     let next = this.previousElementSibling
     while (next) {
@@ -113,6 +131,11 @@ class Node extends HTMLElement {
     this.mutationObserver = new MutationObserver(() => {
       this.updateStyle()
       this.updateLabel()
+    })
+
+    this.addEventListener("refresh", () => {
+      console.log("change!")
+      this.updateStyle()
     })
   }
 
@@ -159,6 +182,10 @@ class Node extends HTMLElement {
     this.mutationObserver.disconnect()
   }
 
+  getContentWidth() {
+    return this.content.getBoundingClientRect().width
+  }
+
   updateLabel() {
     const noNextTree = !this.getTree().getNextTree()
     const consumer = this.getConsumer()
@@ -185,15 +212,20 @@ class Node extends HTMLElement {
     const myForest = this.getTree().getForest()
     const myNextTree = this.getTree().getNextTree()
     const myPrevTree = this.getTree().getPrevTree()
+    const mySiblings = myForest?.getChildTrees()
+    const myConsequence = myForest?.getParentTree().getNode()
+    const myShare = myConsequence ? myConsequence.getContentWidth() / mySiblings.length : 0;
 
     // TODO: make this configurable for just one forest (not cascading) with
     // a forest attribute.
     const borderStyle = "var(--proofml-border, 1px solid black)"
 
+    // TODO: there's got to be a better way than overwriting the whole
+    // stylesheet content.
     this.stylesheet.textContent = `
       .left-space, .right-space {
         flex-grow:1;
-        min-width:.5em;
+        min-width:1em;
       }
 
       .right-space {
@@ -208,17 +240,15 @@ class Node extends HTMLElement {
         padding-right: var(--proofml-kern-right,0);
       }
 
-      .right-space .label {
-        position:absolute;
-        font-size: .7em;
-        bottom: -.6em;
-        padding-left: .5em;
-      }
-
       .content {
+        line-height:1.3;
+        display: flex;
+        flex-wrap: nowrap;
+        flex-direction: row;
+        justify-content: center;
         color: var(--proofml-color, black);
         border-bottom: ${myForest ? borderStyle : "none"};
-        padding:0 .5em 0 .5em;
+        min-width: max(2em,${myShare}px);
       }
 
       :host {
@@ -262,6 +292,16 @@ class Forest extends HTMLElement {
 
   getInference() {
     return this.inference
+  }
+
+  getChildTrees() {
+    return [...this.children].filter(el => el.tagName === "PROOF-TREE")
+  }
+
+  getParentTree() { 
+    return this.parentElement?.tagName === "PROOF-TREE"
+      ? this.parentElement
+      : null
   }
 }
 
