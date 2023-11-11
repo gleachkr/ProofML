@@ -69,12 +69,17 @@ class Tree extends HTMLElement {
       this.forestSlot = document.createElement("slot")
       this.forestSlot.setAttribute("name", "forest")
 
+      this.inferenceSlot = document.createElement("slot")
+      this.inferenceSlot.setAttribute("name", "inference")
+
       //TODO cleanup on disconnectedCallback
       this.nodeSlot.addEventListener("slotchange", () => this.updateForestWidth())
+      this.inferenceSlot.addEventListener("slotchange", elt => this.updateInference(elt))
 
       this.shadowRoot.appendChild(stylesheet)
       this.shadowRoot.appendChild(this.forestSlot)
       this.shadowRoot.appendChild(this.nodeSlot)
+      this.shadowRoot.appendChild(this.inferenceSlot)
       this.initialized = true
     }
   }
@@ -85,6 +90,22 @@ class Tree extends HTMLElement {
         tree.getNode().updateStyle()
       )
     )
+  }
+
+  updateInference(elt) {
+    if (elt.target.assignedNodes().length > 1) {
+      console.error("WARNING: Multiple inferences attached to proof tree", this)
+    }
+    this.inference = elt.target.assignedNodes()[0]
+    this.forestSlot.assignedElements().forEach(el => 
+      el.getChildTrees().forEach(tree => 
+        tree.getNode().updateLabel()
+      )
+    )
+  }
+
+  getInference() {
+    return this.inference
   }
 
   // get the forest that this tree is in, if any
@@ -285,13 +306,10 @@ class Forest extends HTMLElement {
   connectedCallback() {
     this.className = "forest"
     this.setAttribute("slot", "forest")
-    const inferences = [...this.children].filter(el => el.tagName === "PROOF-TREE-INFERENCE")
-    if (inferences.length > 1) console.error("WARNING: Multiple inferences attached to proof forest", this)
-    this.inference = inferences[0]
   }
 
   getInference() {
-    return this.inference
+    return this.getParentTree()?.getInference()
   }
 
   getChildTrees() {
