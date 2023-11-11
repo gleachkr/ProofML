@@ -1,44 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <title></title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-      proof-root:not(:defined) {
-        display:none;
-      }
-    </style>
-    <script type="module" src="./src/proof.mjs"></script>
-  </head>
-  <body>
+
+<head>
+  <title></title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira%20Sans:wght@300;400&display=swap" rel="stylesheet"> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" integrity="sha512-NhSC1YmyruXifcj/KFRWoC561YpHpc5Jtzgvbuzx5VozKpWvQ+4nXhPdFgmx8xqexRcpAglTj9sIBWINXa8x5w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+
+    @font-face {
+    font-family:"Fira Logic";
+    src:url("https://cdn.jsdelivr.net/gh/gleachkr/FiraLogic/dist/FiraLogic-Regular.woff") format("woff"), 
+    }
+
+    html {
+      font-size:24px;
+      font-family: 'Fira Sans', sans;
+      font-weight:300;
+    }
+
+    h1 {
+      font-weight:400;
+    }
+    
+    proof-root:not(:defined) {
+      display: none;
+    }
+
+    body {
+      display:flex;
+      justify-content:center;
+    }
+
+    main {
+      max-width:36rem;
+    }
+
+    figure {
+      display:flex;
+      justify-content:center;
+      --proofml-font-size: 1.2rem;
+      --proofml-font-family: 'Fira Logic', monospace;
+    }
+
+    p {
+      line-height:1.5;
+    }
+  </style>
+  <script type="module" src="./src/proof.mjs"></script>
+</head>
+
+<body>
+  <main>
+    <h1>ProofML</h1>
+    <p>
+      Here's a simple idea. What if proof layouts—the kind of thing that
+      you see in books like Prawitz's <a>Natural Deduction</a> and create with
+      tools like <a>bussproof.sty</a>—were a primitive concept in HTML, just like
+      paragraphs and ordered lists?
+    </p>
+    <p>Kind of like...</p>
+    <figure class="flex justify-center my-4">
     <proof-root>
       <proof-tree>
-      <proof-forest>
-        <proof-tree>
-          <proof-tree-node>Q</proof-tree-node>
-        </proof-tree>
-        <proof-tree>
-          <proof-forest>
-            <proof-tree>
+        <proof-forest>
+          <proof-tree>
             <proof-forest>
               <proof-tree>
-                <proof-tree-node>T</proof-tree-node>
-              </proof-tree>
-              <proof-tree>
-                <proof-tree-node>U</proof-tree-node>
+                <proof-forest>
+                  <proof-tree>
+                    <proof-forest>
+                      <proof-tree>
+                        <proof-forest>
+                          <proof-tree>
+                            <proof-forest>
+                              <proof-tree>
+                                <proof-tree-node>
+                                  &nbsp;
+                                </proof-tree-node>
+                              </proof-tree>
+                            </proof-forest>
+                            <proof-tree-inference>(3)</proof-tree-inference>
+                            <proof-tree-node>
+                              R
+                            </proof-tree-node>
+                          </proof-tree>
+                          <proof-tree>
+                            <proof-forest>
+                              <proof-tree>
+                                <proof-tree-node>
+                                  &nbsp;
+                                </proof-tree-node>
+                              </proof-tree>
+                            </proof-forest>
+                            <proof-tree-inference>(2)</proof-tree-inference>
+                            <proof-tree-node>
+                              R->P
+                            </proof-tree-node>
+                          </proof-tree>
+                        </proof-forest>
+                        <proof-tree-inference>->E</proof-tree-inference>
+                        <proof-tree-node>P</proof-tree-node>
+                      </proof-tree>
+                      <proof-tree>
+                          <proof-forest>
+                            <proof-tree>
+                              <proof-tree-node>
+                                &nbsp;
+                              </proof-tree-node>
+                            </proof-tree>
+                          </proof-forest>
+                        <proof-tree-inference>(1)</proof-tree-inference>
+                        <proof-tree-node>P->Q</proof-tree-node>
+                      </proof-tree>
+                    </proof-forest>
+                    <proof-tree-inference>->E</proof-tree-inference>
+                    <proof-tree-node>Q</proof-tree-node>
+                  </proof-tree>
+                </proof-forest>
+                <proof-tree-inference>->I(3)</proof-tree-inference>
+                <proof-tree-node>R->Q</proof-tree-node>
               </proof-tree>
             </proof-forest>
-            <proof-tree-node>Q</proof-tree-node>
-            </proof-tree>
-          </proof-forest>
-          <proof-tree-node>R
-          </proof-tree-node>
-        </proof-tree>
-        <proof-tree-inference>Duh</proof-tree-inference>
-      </proof-forest>
-      <proof-tree-node>P</proof-tree-node>
+            <proof-tree-inference>->I(2)</proof-tree-inference>
+            <proof-tree-node>(R->P)->(R->Q)</proof-tree-node>
+          </proof-tree>
+        </proof-forest>
+        <proof-tree-inference>->I(1)</proof-tree-inference>
+        <proof-tree-node>(P->Q)->((R->P)->(R->Q))</proof-tree-node>
       </proof-tree>
     </proof-root>
-  </body>
+    </figure>
+  </main>
+</body>
+
 </html>
