@@ -30,9 +30,6 @@ class Root extends HTMLElement {
           flex-direction: column;
         }
 
-        .tree {
-        }
-
         .inference {
           color: var(--proofml-color, black);
           position:absolute;
@@ -60,9 +57,6 @@ class Tree extends HTMLElement {
     if (!this.initialized) {
       this.className = "tree"
 
-      const stylesheet = document.createElement("style")
-      stylesheet.textContent = ``
-
       this.nodeSlot = document.createElement("slot")
       this.nodeSlot.setAttribute("name", "node")
 
@@ -72,11 +66,9 @@ class Tree extends HTMLElement {
       this.inferenceSlot = document.createElement("slot")
       this.inferenceSlot.setAttribute("name", "inference")
 
-      //TODO cleanup on disconnectedCallback
       this.nodeSlot.addEventListener("slotchange", () => this.updateForestWidth())
       this.inferenceSlot.addEventListener("slotchange", elt => this.updateInference(elt))
 
-      this.shadowRoot.appendChild(stylesheet)
       this.shadowRoot.appendChild(this.forestSlot)
       this.shadowRoot.appendChild(this.nodeSlot)
       this.shadowRoot.appendChild(this.inferenceSlot)
@@ -152,11 +144,6 @@ class Node extends HTMLElement {
     this.mutationObserver = new MutationObserver(() => {
       this.updateStyle()
       this.updateLabel()
-    })
-
-    this.addEventListener("refresh", () => {
-      console.log("change!")
-      this.updateStyle()
     })
   }
 
@@ -241,38 +228,32 @@ class Node extends HTMLElement {
     // a forest attribute.
     const borderStyle = "var(--proofml-border, 1px solid black)"
 
-    // TODO: there's got to be a better way than overwriting the whole
-    // stylesheet content.
+    // Should do this in a more targeted way.
     this.stylesheet.textContent = `
       .left-space, .right-space {
         flex-grow:1;
         min-width:1em;
+        position:relative;
       }
 
       .right-space {
         border-bottom: ${myNextTree ? borderStyle : "none" };
-        position:relative;
         padding-left: var(--proofml-kern-left,0);
       }
 
       .left-space {
         border-bottom: ${myPrevTree ? borderStyle : "none" };
-        position: relative;
         padding-right: var(--proofml-kern-right,0);
       }
 
       .content {
         line-height:1.3;
-        display: flex;
-        flex-wrap: nowrap;
-        flex-direction: row;
-        justify-content: center;
         color: var(--proofml-color, black);
         border-bottom: ${myForest ? borderStyle : "none"};
         min-width: max(2em,${myShare}px);
       }
 
-      :host {
+      :host, .content {
         display: flex;
         flex-wrap: nowrap;
         flex-direction: row;
