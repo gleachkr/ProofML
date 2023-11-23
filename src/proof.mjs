@@ -1,5 +1,10 @@
 import { computePosition, autoUpdate } from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3/+esm';
 
+const role = {
+  container: Symbol("container"),
+  node: Symbol("node"),
+}
+
 class Root extends HTMLElement {
   constructor() {
     super()
@@ -76,11 +81,11 @@ class Tree extends HTMLElement {
     }
   }
 
+  get role() { return role.node }
+
   updateForestWidth() {
     this.forestSlot.assignedElements().forEach(el => 
-      el.getChildTrees().forEach(tree => 
-        tree.getNode().updateStyle()
-      )
+      el.getChildNodes().forEach(node=> node.updateStyle())
     )
   }
 
@@ -90,10 +95,16 @@ class Tree extends HTMLElement {
     }
     this.inference = elt.target.assignedNodes()[0]
     this.forestSlot.assignedElements().forEach(el => 
-      el.getChildTrees().forEach(tree => 
-        tree.getNode().updateLabel()
-      )
+      el.getChildNodes().forEach(node => node.updateLabel())
     )
+  }
+
+  updateStyle() {
+    this.getNode().updateStyle()
+  }
+
+  updateLabel() {
+    this.getNode().updateLabel()
   }
 
   getInference() {
@@ -102,7 +113,7 @@ class Tree extends HTMLElement {
 
   // get the forest that this tree is in, if any
   getForest() {
-    return this.parentElement?.tagName === "PROOF-FOREST"
+    return (this.parentElement?.tagName === "PROOF-FOREST" || this.parentElement?.tagName === "PROOF-TREE-LEAF")
       ? this.parentElement
       : null
   }
@@ -113,27 +124,27 @@ class Tree extends HTMLElement {
   }
 
   // get the next adjacent tree
-  getNextTree() {
+  getNextNode() {
     let next = this.nextElementSibling
     while (next) {
-      if (next.tagName === "PROOF-TREE") return next
+      if (next.role === role.node) return next
       next = next.nextElementSibling
     }
     return false
   }
 
   // get the previous adjacent tree
-  getPrevTree() {
+  getPrevNode() {
     let next = this.previousElementSibling
     while (next) {
-      if (next.tagName === "PROOF-TREE") return next
+      if (next.role === role.node) return next
       next = next.previousElementSibling
     }
     return false
   }
 }
 
-class Node extends HTMLElement {
+class Proposition extends HTMLElement {
   constructor() {
     super()
     this.attachShadow({ mode: "open" })
@@ -175,9 +186,9 @@ class Node extends HTMLElement {
       this.initialized = true
     }
 
-    const forest = this.getTree().getForest()
+    const forest = this.getContainer().getForest()
 
-    if (forest) this.mutationObserver.observe(this.getTree().getForest(), {
+    if (forest) this.mutationObserver.observe(this.getContainer().getForest(), {
       childList: true
     })
 
@@ -194,8 +205,10 @@ class Node extends HTMLElement {
     return this.content.getBoundingClientRect().width
   }
 
+  get role() { return role.node }
+
   updateLabel() {
-    const noNextTree = !this.getTree().getNextTree()
+    const noNextTree = !this.getContainer().getNextNode()
     const consumer = this.getConsumer()
     const content = this.content
 
@@ -217,10 +230,10 @@ class Node extends HTMLElement {
   }
 
   updateStyle() {
-    const myForest = this.getTree().getForest()
-    const myNextTree = this.getTree().getNextTree()
-    const myPrevTree = this.getTree().getPrevTree()
-    const mySiblings = myForest?.getChildTrees()
+    const myForest = this.getContainer().getForest()
+    const myNextTree = this.getContainer().getNextNode()
+    const myPrevTree = this.getContainer().getPrevNode()
+    const mySiblings = myForest?.getChildNodes()
     const myConsequence = myForest?.getParentTree().getNode()
     const myShare = myConsequence ? myConsequence.getContentWidth() / mySiblings.length : 0;
 
@@ -263,7 +276,7 @@ class Node extends HTMLElement {
   }
 
   // get the proof tree housing this node, if any
-  getTree() {
+  getContainer() {
     return this.parentElement?.tagName === "PROOF-TREE"
       ? this.parentElement
       : null
@@ -271,7 +284,7 @@ class Node extends HTMLElement {
 
   // get the inference that is consuming this node
   getConsumer() {
-    return this.getTree()?.getForest()?.getInference()
+    return this.getContainer()?.getForest()?.getInference()
   }
 }
 
@@ -289,12 +302,14 @@ class Forest extends HTMLElement {
     this.setAttribute("slot", "forest")
   }
 
+  get role() { return role.container }
+
   getInference() {
     return this.getParentTree()?.getInference()
   }
 
-  getChildTrees() {
-    return [...this.children].filter(el => el.tagName === "PROOF-TREE")
+  getChildNodes() {
+    return [...this.children].filter(el => el.role === role.node)
   }
 
   getParentTree() { 
@@ -304,9 +319,26 @@ class Forest extends HTMLElement {
   }
 }
 
+class Leaf extends Forest {
+  connectedCallback() {
+    if (!this.initialized) {
+      this.className = "forest"
+      this.setAttribute("slot", "forest")
+      const tree = new Tree;
+      const node = new Proposition;
+      this.childNodes.length > 0 
+        ? [...this.childNodes].forEach(child => node.appendChild(child))
+        : node.innerHTML = "&nbsp;"
+      this.appendChild(tree)
+      tree.appendChild(node)
+    }
+  }
+}
+
 const registry = window.customElements
 registry.define("proof-forest", Forest)
 registry.define("proof-tree", Tree)
 registry.define("proof-root", Root)
 registry.define("proof-tree-inference", Inference)
-registry.define("proof-tree-node", Node)
+registry.define("proof-tree-proposition", Proposition)
+registry.define("proof-tree-leaf", Leaf)
