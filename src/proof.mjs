@@ -112,8 +112,8 @@ class Tree extends HTMLElement {
   }
 
   // get the forest that this tree is in, if any
-  getForest() {
-    return (this.parentElement?.tagName === "PROOF-FOREST" || this.parentElement?.tagName === "PROOF-TREE-LEAF")
+  getContainer() {
+    return (this.parentElement?.role === role.container)
       ? this.parentElement
       : null
   }
@@ -186,9 +186,9 @@ class Proposition extends HTMLElement {
       this.initialized = true
     }
 
-    const forest = this.getContainer().getForest()
+    const forest = this.getContainer()
 
-    if (forest) this.mutationObserver.observe(this.getContainer().getForest(), {
+    if (forest) this.mutationObserver.observe(this.getContainer(), {
       childList: true
     })
 
@@ -205,10 +205,36 @@ class Proposition extends HTMLElement {
     return this.content.getBoundingClientRect().width
   }
 
+  getNextNode() {
+    if (this.parentElement.role === role.node) {
+      return this.parentElement.getNextNode()
+    } else {
+      let next = this.nextElementSibling
+      while (next) {
+        if (next.role === role.node) return next
+        next = next.nextElementSibling
+      }
+      return null
+    }
+  }
+
+  getPrevNode() {
+    if (this.parentElement.role === role.node) {
+      return this.parentElement.getPrevNode()
+    } else {
+      let prev = this.previousElementSibling
+      while (prev) {
+        if (prev.role === role.node) return prev
+        prev = prev.previousElementSibling
+      }
+      return null
+    }
+  }
+
   get role() { return role.node }
 
   updateLabel() {
-    const noNextTree = !this.getContainer().getNextNode()
+    const noNextTree = !this.getNextNode()
     const consumer = this.getConsumer()
     const content = this.content
 
@@ -230,11 +256,11 @@ class Proposition extends HTMLElement {
   }
 
   updateStyle() {
-    const myForest = this.getContainer().getForest()
-    const myNextTree = this.getContainer().getNextNode()
-    const myPrevTree = this.getContainer().getPrevNode()
+    const myForest = this.getContainer()
+    const myNextTree = this.getNextNode()
+    const myPrevTree = this.getPrevNode()
     const mySiblings = myForest?.getChildNodes()
-    const myConsequence = myForest?.getParentTree().getNode()
+    const myConsequence = myForest?.getParentNode().getNode()
     const myShare = myConsequence ? myConsequence.getContentWidth() / mySiblings.length : 0;
 
     // TODO: make this configurable for just one forest (not cascading) with
@@ -277,14 +303,18 @@ class Proposition extends HTMLElement {
 
   // get the proof tree housing this node, if any
   getContainer() {
-    return this.parentElement?.tagName === "PROOF-TREE"
-      ? this.parentElement
-      : null
+    if (this.parentElement?.role === role.container) {
+      return this.parentElement
+    } else if (this.parentElement?.role === role.node) {
+      return this.parentElement.getContainer()
+    } else {
+      return null
+    }
   }
 
   // get the inference that is consuming this node
   getConsumer() {
-    return this.getContainer()?.getForest()?.getInference()
+    return this.getContainer()?.getInference()
   }
 }
 
@@ -305,15 +335,15 @@ class Forest extends HTMLElement {
   get role() { return role.container }
 
   getInference() {
-    return this.getParentTree()?.getInference()
+    return this.getParentNode()?.getInference()
   }
 
   getChildNodes() {
     return [...this.children].filter(el => el.role === role.node)
   }
 
-  getParentTree() { 
-    return this.parentElement?.tagName === "PROOF-TREE"
+  getParentNode() { 
+    return (this.parentElement.role === role.node)
       ? this.parentElement
       : null
   }
