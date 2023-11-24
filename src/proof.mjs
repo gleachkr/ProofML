@@ -65,13 +65,15 @@ class Tree extends HTMLElement {
       this.nodeSlot = document.createElement("slot")
       this.nodeSlot.setAttribute("name", "node")
 
+      this.defaultForest = document.createElement("proof-forest")
+
+      this.defaultNode = document.createElement("proof-tree-proposition")
+      this.defaultNode.innerHTML = "&nbsp;" // might be able to avoid this with CSS
+      this.defaultForest.appendChild(this.defaultNode)
+
       this.forestSlot = document.createElement("slot")
       this.forestSlot.setAttribute("name", "forest")
-      const defaultForest = document.createElement("proof-forest")
-      const defaultNode = document.createElement("proof-tree-proposition")
-      defaultNode.innerHTML = "&nbsp;"
-      defaultForest.appendChild(defaultNode)
-      this.forestSlot.appendChild(defaultForest)
+      this.forestSlot.appendChild(this.defaultForest)
 
       this.inferenceSlot = document.createElement("slot")
       this.inferenceSlot.setAttribute("name", "inference")
@@ -92,6 +94,7 @@ class Tree extends HTMLElement {
     this.forestSlot.assignedElements().forEach(el => 
       el.getChildNodes().forEach(node=> node.updateStyle())
     )
+    this.defaultNode.updateStyle()
   }
 
   updateInference(elt) {
@@ -102,6 +105,7 @@ class Tree extends HTMLElement {
     this.forestSlot.assignedElements().forEach(el => 
       el.getChildNodes().forEach(node => node.updateLabel())
     )
+    this.defaultNode.updateLabel()
   }
 
   updateStyle() {
@@ -265,7 +269,7 @@ class Proposition extends HTMLElement {
     const myNextTree = this.getNextNode()
     const myPrevTree = this.getPrevNode()
     const mySiblings = myForest?.getChildNodes()
-    const myConsequence = myForest?.getParentNode()?.getNode()
+    const myConsequence = myForest?.getConsequence()
     const myShare = myConsequence ? myConsequence.getContentWidth() / mySiblings.length : 0;
 
     // TODO: make this configurable for just one forest (not cascading) with
@@ -319,7 +323,6 @@ class Proposition extends HTMLElement {
 
   // get the inference that is consuming this node
   getConsumer() {
-    console.log(this, this.getContainer(),this.getContainer()?.getInference())
     return this.getContainer()?.getInference()
   }
 }
@@ -350,6 +353,20 @@ class Forest extends HTMLElement {
       return [...this.parentElement.parentNode.children]
         .find(elt => elt.name === "inference")?.assignedNodes()[0]
     }
+    return null
+  }
+
+  getConsequence() {
+    // If we're sitting inside a tree, we get the consequence from that
+    if (this.parentElement.role === role.node) {
+      return this.getParentNode().getNode()
+    }
+    // If we're sitting inside a slot, we get the consequence from a sibling slot
+    if (this.parentElement.tagName === "SLOT") {
+      return [...this.parentElement.parentNode.children]
+        .find(elt => elt.name === "node")?.assignedNodes()[0]
+    }
+    return null
   }
 
   getChildNodes() {
