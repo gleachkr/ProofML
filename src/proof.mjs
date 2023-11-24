@@ -197,13 +197,26 @@ class Proposition extends HTMLElement {
 
     const forest = this.getContainer()
 
-    if (forest) this.mutationObserver.observe(this.getContainer(), {
-      childList: true
-    })
+    if (forest) {
+      this.mutationObserver.observe(forest, {
+        childList: true
+      })
+    }
+
+    //this needs a tick, during initialization, to let everything get slotted
+    //properly
+    setTimeout(() => {
+      if (forest?.getConsequence()) {
+        this.mutationObserver.observe(forest.getConsequence(), {
+          childList: true,
+          characterData: true,
+          subtree:true,
+        })
+      }
+    }, 0)
 
     this.updateStyle()
     this.updateLabel()
-
   }
 
   disconnectedCallback() {
@@ -264,6 +277,7 @@ class Proposition extends HTMLElement {
     }
   }
 
+  //Something's going wrong in calculating content width
   updateStyle() {
     const myForest = this.getContainer()
     const myNextTree = this.getNextNode()
