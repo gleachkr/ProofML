@@ -67,6 +67,11 @@ class Tree extends HTMLElement {
 
       this.forestSlot = document.createElement("slot")
       this.forestSlot.setAttribute("name", "forest")
+      const defaultForest = document.createElement("proof-forest")
+      const defaultNode = document.createElement("proof-tree-proposition")
+      defaultNode.innerHTML = "&nbsp;"
+      defaultForest.appendChild(defaultNode)
+      this.forestSlot.appendChild(defaultForest)
 
       this.inferenceSlot = document.createElement("slot")
       this.inferenceSlot.setAttribute("name", "inference")
@@ -260,7 +265,7 @@ class Proposition extends HTMLElement {
     const myNextTree = this.getNextNode()
     const myPrevTree = this.getPrevNode()
     const mySiblings = myForest?.getChildNodes()
-    const myConsequence = myForest?.getParentNode().getNode()
+    const myConsequence = myForest?.getParentNode()?.getNode()
     const myShare = myConsequence ? myConsequence.getContentWidth() / mySiblings.length : 0;
 
     // TODO: make this configurable for just one forest (not cascading) with
@@ -314,6 +319,7 @@ class Proposition extends HTMLElement {
 
   // get the inference that is consuming this node
   getConsumer() {
+    console.log(this, this.getContainer(),this.getContainer()?.getInference())
     return this.getContainer()?.getInference()
   }
 }
@@ -335,7 +341,15 @@ class Forest extends HTMLElement {
   get role() { return role.container }
 
   getInference() {
-    return this.getParentNode()?.getInference()
+    // If we're sitting inside a tree, we get the inference from that:
+    if (this.parentElement.role === role.node) {
+      return this.getParentNode().getInference()
+    }
+    // If we're sitting inside a slot, we get the inference from a sibling slot
+    if (this.parentElement.tagName === "SLOT") {
+      return [...this.parentElement.parentNode.children]
+        .find(elt => elt.name === "inference")?.assignedNodes()[0]
+    }
   }
 
   getChildNodes() {
@@ -343,25 +357,10 @@ class Forest extends HTMLElement {
   }
 
   getParentNode() { 
-    return (this.parentElement.role === role.node)
-      ? this.parentElement
-      : null
-  }
-}
-
-class Leaf extends Forest {
-  connectedCallback() {
-    if (!this.initialized) {
-      this.className = "forest"
-      this.setAttribute("slot", "forest")
-      const tree = new Tree;
-      const node = new Proposition;
-      this.childNodes.length > 0 
-        ? [...this.childNodes].forEach(child => node.appendChild(child))
-        : node.innerHTML = "&nbsp;"
-      this.appendChild(tree)
-      tree.appendChild(node)
+    if (this.parentElement.role === role.node) {
+      return this.parentElement
     }
+    return null
   }
 }
 
@@ -371,4 +370,3 @@ registry.define("proof-tree", Tree)
 registry.define("proof-root", Root)
 registry.define("proof-tree-inference", Inference)
 registry.define("proof-tree-proposition", Proposition)
-registry.define("proof-tree-leaf", Leaf)
