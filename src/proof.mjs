@@ -197,11 +197,11 @@ class Proposition extends HTMLElement {
 
     const forest = this.getContainer()
 
-    if (forest) {
-      this.mutationObserver.observe(forest, {
-        childList: true
-      })
-    }
+     if (forest) {
+       this.mutationObserver.observe(forest, {
+         childList: true
+       })
+     }
 
     //this needs a tick, during initialization, to let everything get slotted
     //properly
@@ -213,7 +213,7 @@ class Proposition extends HTMLElement {
           subtree:true,
         })
       }
-    }, 0)
+     }, 0)
 
     this.updateStyle()
     this.updateLabel()
@@ -259,8 +259,10 @@ class Proposition extends HTMLElement {
     const noNextTree = !this.getNextNode()
     const consumer = this.getConsumer()
     const content = this.content
+    const {x,y} = this.getBoundingClientRect(this.content)
+    const isPositioned = x != 0 || y != 0;
 
-    if (consumer && noNextTree) {
+    if (consumer && noNextTree && isPositioned) {
       this.release = autoUpdate(content, consumer, () => 
         computePosition(content, consumer, { placement: 'right'})
         .then(({x,y}) => {
