@@ -281,7 +281,6 @@ class Proposition extends HTMLElement {
     }
   }
 
-  //Something's going wrong in calculating content width
   updateStyle() {
     const myForest = this.getContainer()
     const myNextTree = this.getNextNode()
