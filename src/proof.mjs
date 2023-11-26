@@ -180,16 +180,19 @@ class Proposition extends HTMLElement {
       rightSpace.className = "right-space"
 
       this.content = document.createElement("div")
+      this.contentFrame = document.createElement("div")
       const contentSlot = document.createElement("slot")
+      this.contentFrame.className = "content-frame"
       this.content.className = "content"
       this.content.appendChild(contentSlot)
+      this.contentFrame.appendChild(this.content)
 
       const leftSpace = document.createElement("div")
       leftSpace.className = "left-space"
 
       this.shadowRoot.appendChild(this.stylesheet)
       this.shadowRoot.appendChild(leftSpace)
-      this.shadowRoot.appendChild(this.content)
+      this.shadowRoot.appendChild(this.contentFrame)
       this.shadowRoot.appendChild(rightSpace)
 
       this.initialized = true
@@ -258,13 +261,12 @@ class Proposition extends HTMLElement {
   updateLabel() {
     const noNextTree = !this.getNextNode()
     const consumer = this.getConsumer()
-    const content = this.content
-    const {x,y} = this.getBoundingClientRect(this.content)
+    const {x,y} = this.getBoundingClientRect(this.contentFrame)
     const isPositioned = x != 0 || y != 0;
 
     if (consumer && noNextTree && isPositioned) {
-      this.release = autoUpdate(content, consumer, () => 
-        computePosition(content, consumer, { placement: 'right'})
+      this.release = autoUpdate(this.contentFrame, consumer, () => 
+        computePosition(this.contentFrame, consumer, { placement: 'right'})
         .then(({x,y}) => {
           Object.assign(consumer.style, {
             left: `${x}px`,
@@ -310,14 +312,14 @@ class Proposition extends HTMLElement {
         padding-right: var(--proofml-kern-right,0);
       }
 
-      .content {
+      .content-frame {
         line-height:1.3;
         color: var(--proofml-color, black);
         border-bottom: ${myForest ? borderStyle : "none"};
         min-width: max(2em,${myShare}px);
       }
 
-      :host, .content {
+      :host, .content-frame {
         display: flex;
         flex-wrap: nowrap;
         flex-direction: row;
