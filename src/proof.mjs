@@ -223,21 +223,22 @@ class Proposition extends HTMLElement {
     const {x,y} = this.getBoundingClientRect(this.contentFrame)
     const isPositioned = x != 0 || y != 0;
 
+    //release any old listeners
+    this.release?.()
+
     if (consumer && noNextTree && isPositioned) {
       this.release = autoUpdate(this.contentFrame, consumer, () => 
         computePosition(this.contentFrame, consumer, { placement: 'right'})
         .then(({x,y}) => {
+          const {height} = this.getBoundingClientRect(this.contentFrame)
           Object.assign(consumer.style, {
             left: `${x}px`,
-            top: `calc(${y}px + 1em)`,
+            top: `${Math.floor(y + (height/2))}px`,
             height: `min-content`
           })
       })
       )
-    } else {
-      // release listeners if we're not the label anchor anymore
-      this.release?.()
-    }
+    }  
   }
 
   updateStyle() {
@@ -309,7 +310,6 @@ class Inference extends HTMLElement {
     this.setAttribute("slot", "inference")
     this.style.position = "absolute"
     this.style.color = "var(--proofml-color, black)"
-    this.style.bottom = "-.5em"
     this.style.fontSize = ".6em"
     this.style.margin = "0 .5em 0 .5em"
   }
