@@ -5,30 +5,6 @@ const role = {
   node: Symbol("node"),
 }
 
-class Root extends HTMLElement {
-  constructor() {
-    super()
-    this.attachShadow({ mode: "open" })
-  }
-
-  connectedCallback() {
-    if (!this.initialized) {
-      const stylesheet = document.createElement("style")
-      stylesheet.textContent = `
-
-        :host {
-          font-size: var(--proofml-font-size, 1em);
-          font-family: var(--proofml-font-family, serif);
-        }
-      `
-      this.shadowRoot.appendChild(stylesheet);
-      [...this.children].map(child => this.shadowRoot.appendChild(child))
-
-      this.initialized = true
-    }
-  }
-}
-
 class Tree extends HTMLElement {
 
   constructor() {
