@@ -20,28 +20,6 @@ class Root extends HTMLElement {
           font-size: var(--proofml-font-size, 1em);
           font-family: var(--proofml-font-family, serif);
         }
-
-        .forest {
-          display: flex;
-          flex-wrap: nowrap;
-          flex-direction: row;
-          justify-content: center;
-          align-items: flex-end;
-        }
-
-        .tree {
-          display: inline-flex;
-          flex-wrap: nowrap;
-          flex-direction: column;
-        }
-
-        .inference {
-          color: var(--proofml-color, black);
-          position:absolute;
-          bottom:-.5em;
-          font-size:.6em;
-          margin: 0 .5em 0 .5em;
-        }
       `
       this.shadowRoot.appendChild(stylesheet);
       [...this.children].map(child => this.shadowRoot.appendChild(child))
@@ -61,6 +39,11 @@ class Tree extends HTMLElement {
   connectedCallback() {
     if (!this.initialized) {
       this.className = "tree"
+      this.style.display = "inline-flex"
+      this.style.flexWrap = "nowrap"
+      this.style.flexDirection = "column"
+      this.style.fontSize = "var(--proofml-font-size, 1em)"
+      this.style.fontFamily = "var(--proofml-font-family, serif)"
 
       this.nodeSlot = document.createElement("slot")
       this.nodeSlot.setAttribute("name", "node")
@@ -349,6 +332,10 @@ class Inference extends HTMLElement {
     this.className = "inference"
     this.setAttribute("slot", "inference")
     this.style.position = "absolute"
+    this.style.color = "var(--proofml-color, black)"
+    this.style.bottom = "-.5em"
+    this.style.fontSize = ".6em"
+    this.style.margin = "0 .5em 0 .5em"
   }
 }
 
@@ -356,6 +343,11 @@ class Forest extends HTMLElement {
   connectedCallback() {
     this.className = "forest"
     this.setAttribute("slot", "forest")
+    this.style.display = "flex"
+    this.style.flexWrap = "nowrap"
+    this.style.flexDirection = "row"
+    this.style.justifyContent = "center"
+    this.style.alignItems = "flex-end"
   }
 
   get role() { return role.container }
@@ -401,6 +393,5 @@ class Forest extends HTMLElement {
 const registry = window.customElements
 registry.define("proof-forest", Forest)
 registry.define("proof-tree", Tree)
-registry.define("proof-root", Root)
 registry.define("proof-tree-inference", Inference)
 registry.define("proof-tree-proposition", Proposition)
