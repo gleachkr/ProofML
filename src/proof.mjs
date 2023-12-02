@@ -135,8 +135,8 @@ class Proposition extends HTMLElement {
 
       this.stylesheet = document.createElement("style")
 
-      const rightSpace = document.createElement("div")
-      rightSpace.className = "right-space"
+      const leftSpace = document.createElement("div")
+      leftSpace.className = "left-space"
 
       this.content = document.createElement("div")
       this.contentFrame = document.createElement("div")
@@ -145,9 +145,9 @@ class Proposition extends HTMLElement {
       this.content.className = "content"
       this.content.appendChild(contentSlot)
       this.contentFrame.appendChild(this.content)
-
-      const leftSpace = document.createElement("div")
-      leftSpace.className = "left-space"
+      
+      const rightSpace = document.createElement("div")
+      rightSpace.className = "right-space"
 
       this.shadowRoot.appendChild(this.stylesheet)
       this.shadowRoot.appendChild(leftSpace)
@@ -159,15 +159,19 @@ class Proposition extends HTMLElement {
 
     const forest = this.getContainer()
 
-     if (forest) {
-       this.mutationObserver.observe(forest, {
-         childList: true
-       })
-     }
+    if (forest) {
+      this.mutationObserver.observe(forest, {
+        childList: true
+      })
+    }
 
     //this needs a tick, during initialization, to let everything get slotted
     //properly
     setTimeout(() => {
+      // But that means we need to update, because something might have
+      // happened before the tick was up
+      this.updateStyle()
+      this.updateLabel()
       if (forest?.getConsequence()) {
         this.mutationObserver.observe(forest.getConsequence(), {
           childList: true,
@@ -176,9 +180,8 @@ class Proposition extends HTMLElement {
         })
       }
      }, 0)
-
-    this.updateStyle()
-    this.updateLabel()
+     this.updateStyle()
+     this.updateLabel()
   }
 
   disconnectedCallback() {
