@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira%20Sans:wght@300;400&display=swap" rel="stylesheet"> 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" integrity="sha512-NhSC1YmyruXifcj/KFRWoC561YpHpc5Jtzgvbuzx5VozKpWvQ+4nXhPdFgmx8xqexRcpAglTj9sIBWINXa8x5w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/themes/prism-coy.min.css" integrity="sha512-XcB0I04SuOVkb6ewfVz0qMhU5QADIiFBFxPRRNWZUANF1W5onx8GlbHYYIivw3gXrTuZfu+1gAG8HvvKQG3oGA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
 
     @font-face {
@@ -49,11 +50,18 @@
     p {
       line-height:1.5;
     }
+
+    :not(pre) > code[class*="language-"] {
+      margin-bottom:0;
+      border:none;
+    }
   </style>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
   <script type="module" src="./src/proof.mjs"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/prism.min.js" integrity="sha512-UOoJElONeUNzQbbKQbjldDf9MwOHqxNz49NNJJ1d90yp+X9edsHyJoAs6O4K19CZGaIdjI5ohK+O2y5lBTW6uQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/components/prism-haskell.min.js" integrity="sha512-Ms8C+O5PusTaICWOXF+t5OgMA4O0rNYqkWzOMXtl68aJt1bYFNBX9s8Jd99tcvHCF/JrkYjXvAxSbSUGMMR7pQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 
 <body>
@@ -112,7 +120,15 @@
         <proof-tree-proposition>\(\Gamma\vdash (\Lambda X.t:\forall X.T)U\equiv t[U/X]:T[U/X]\)</proof-tree-proposition><proof-tree-inference>\(\beta\)</proof-tree-inference>
       </proof-tree>
     </figure>
-
+    <p>And it'd be nice to be able to build proofs out of syntax-highlighted code blocks, using Prism.js or whatever…
+    <figure>
+      <proof-tree>
+        <proof-forest>
+          <proof-tree-proposition><code class="language-haskell">(m >>= g) >>= h == k</code></proof-tree-proposition>
+        </proof-forest>
+        <proof-tree-proposition><code class="language-haskell">m >>= (\x -> g x >>= h) == k</code></proof-tree-proposition><proof-tree-inference>Assoc</proof-tree-inference>
+      </proof-tree>
+    </figure>
 
   </main>
 </body>
