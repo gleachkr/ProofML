@@ -58,7 +58,12 @@
   </style>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+  <script type="importmap">
+    { "imports": { "preact": "https://unpkg.com/htm/preact/index.module.js?module" } }
+  </script>
+
   <script type="module" src="./src/proof.mjs"></script>
+  <script type="module" src="./src/proof-preact.mjs"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/prism.min.js" integrity="sha512-UOoJElONeUNzQbbKQbjldDf9MwOHqxNz49NNJJ1d90yp+X9edsHyJoAs6O4K19CZGaIdjI5ohK+O2y5lBTW6uQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/components/prism-haskell.min.js" integrity="sha512-Ms8C+O5PusTaICWOXF+t5OgMA4O0rNYqkWzOMXtl68aJt1bYFNBX9s8Jd99tcvHCF/JrkYjXvAxSbSUGMMR7pQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -120,13 +125,23 @@
         <proof-tree-proposition>\(\Gamma\vdash (\Lambda X.t:\forall X.T)U\equiv t[U/X]:T[U/X]\)</proof-tree-proposition><proof-tree-inference>\(\beta\)</proof-tree-inference>
       </proof-tree>
     </figure>
-    <p>And it'd be nice to be able to build proofs out of syntax-highlighted code blocks, using Prism.js or whatever…
+    <p>And it'd be nice to be able to build proofs out of syntax-highlighted code blocks, using Prism.js or whatever…</p>
     <figure>
       <proof-tree>
         <proof-forest>
           <proof-tree-proposition><code class="language-haskell">(m >>= g) >>= h == k</code></proof-tree-proposition>
         </proof-forest>
         <proof-tree-proposition><code class="language-haskell">m >>= (\x -> g x >>= h) == k</code></proof-tree-proposition><proof-tree-inference>Assoc</proof-tree-inference>
+      </proof-tree>
+    </figure>
+    <p>It would also make sense to be able to edit proofs, like by including editable elements, or applying <code>contenteditable</code>. The layout should resize naturally.
+    <figure>
+      <proof-tree>
+        <proof-forest>
+          <proof-tree-proposition>P→¬?</proof-tree-proposition>
+          <proof-tree-proposition><div contenteditable style="width:fit-content;">?</div></proof-tree-proposition>
+        </proof-forest>
+        <proof-tree-proposition>¬P</proof-tree-proposition><proof-tree-inference>MT</proof-tree-inference>
       </proof-tree>
     </figure>
 

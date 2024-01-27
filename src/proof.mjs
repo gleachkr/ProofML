@@ -50,8 +50,8 @@ class Tree extends HTMLElement {
   get role() { return role.node }
 
   updateForestWidth() {
-    this.forestSlot.assignedElements().forEach(el => 
-      el.getChildNodes().forEach(node=> node.updateStyle())
+    this.forestSlot.assignedElements().forEach(el =>
+      el.getChildNodes().forEach(node => node.updateStyle())
     )
     this.defaultNode.updateStyle()
   }
@@ -61,7 +61,7 @@ class Tree extends HTMLElement {
       console.error("WARNING: Multiple inferences attached to proof tree", this)
     }
     this.inference = elt.target.assignedNodes()[0]
-    this.forestSlot.assignedElements().forEach(el => 
+    this.forestSlot.assignedElements().forEach(el =>
       el.getChildNodes().forEach(node => node.updateLabel())
     )
     this.defaultNode.updateLabel()
@@ -145,7 +145,7 @@ class Proposition extends HTMLElement {
       this.content.className = "content"
       this.content.appendChild(contentSlot)
       this.contentFrame.appendChild(this.content)
-      
+
       const rightSpace = document.createElement("div")
       rightSpace.className = "right-space"
 
@@ -176,12 +176,12 @@ class Proposition extends HTMLElement {
         this.mutationObserver.observe(forest.getConsequence(), {
           childList: true,
           characterData: true,
-          subtree:true,
+          subtree: true,
         })
       }
-     }, 0)
-     this.updateStyle()
-     this.updateLabel()
+    }, 0)
+    this.updateStyle()
+    this.updateLabel()
   }
 
   disconnectedCallback() {
@@ -223,25 +223,25 @@ class Proposition extends HTMLElement {
   updateLabel() {
     const noNextTree = !this.getNextNode()
     const consumer = this.getConsumer()
-    const {x,y} = this.getBoundingClientRect(this.contentFrame)
+    const { x, y } = this.getBoundingClientRect(this.contentFrame)
     const isPositioned = x != 0 || y != 0;
 
     //release any old listeners
     this.release?.()
 
     if (consumer && noNextTree && isPositioned) {
-      this.release = autoUpdate(this.contentFrame, consumer, () => 
-        computePosition(this.contentFrame, consumer, { placement: 'right'})
-        .then(({x,y}) => {
-          const {height} = this.getBoundingClientRect(this.contentFrame)
-          Object.assign(consumer.style, {
-            left: `${x}px`,
-            top: `${Math.floor(y + (height/2))}px`,
-            height: `min-content`
+      this.release = autoUpdate(this.contentFrame, consumer, () =>
+        computePosition(this.contentFrame, consumer, { placement: 'right' })
+          .then(({ x, y }) => {
+            const { height } = this.getBoundingClientRect(this.contentFrame)
+            Object.assign(consumer.style, {
+              left: `${x}px`,
+              top: `${Math.floor(y + (height / 2))}px`,
+              height: `min-content`
+            })
           })
-      })
       )
-    }  
+    }
   }
 
   updateStyle() {
@@ -252,8 +252,6 @@ class Proposition extends HTMLElement {
     const myConsequence = myForest?.getConsequence()
     const myShare = myConsequence ? myConsequence.getContentWidth() / mySiblings.length : 0;
 
-    // TODO: make this configurable for just one forest (not cascading) with
-    // a forest attribute.
     const borderStyle = "var(--proofml-border, 1px solid black)"
 
     // Should do this in a more targeted way.
@@ -265,12 +263,12 @@ class Proposition extends HTMLElement {
       }
 
       .right-space {
-        border-bottom: ${myNextTree ? borderStyle : "none" };
+        border-bottom: ${myNextTree ? borderStyle : "none"};
         padding-left: var(--proofml-kern-left,0);
       }
 
       .left-space {
-        border-bottom: ${myPrevTree ? borderStyle : "none" };
+        border-bottom: ${myPrevTree ? borderStyle : "none"};
         padding-right: var(--proofml-kern-right,0);
       }
 
@@ -361,7 +359,7 @@ class Forest extends HTMLElement {
     return [...this.children].filter(el => el.role === role.node)
   }
 
-  getParentNode() { 
+  getParentNode() {
     if (this.parentElement.role === role.node) {
       return this.parentElement
     }
