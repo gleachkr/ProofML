@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="module" src="./src/proof-simple.mjs"></script>
+<style>
+  .node {
+    display:grid;
+    grid-template-columns: 1fr max-content 1fr;
+  }
+
+  .node > div {
+    display:inline;
+  }
+
+  .forest {
+    display:flex;
+    justify-content:space-around;
+    padding:0px 15px 0px 15px;
+  }
+
+  .proposition {
+    padding: 0px 5px 0px 5px;
+    margin-bottom:-1px;
+    border-top:1px solid black;
+  }
+
+  .left-strut, .right-strut {
+    margin-bottom:-1px;
+    position:relative;
+  }
+
+  .forest .proposition {
+    border-bottom:1px solid black;
+  }
+
+  .tree {
+    display:inline-flex;
+    flex-direction:column;
+    justify-content:end;
+  }
+
+  .inference {
+    position:absolute;
+    bottom:15px;
+  }
+
+  .forest > .tree:not(:first-child) > .node > .left-strut {
+    border-bottom:1px solid black;
+  }
+
+  .forest > .tree:not(:last-child) > .node > .right-strut {
+    border-bottom:1px solid black;
+  }
+
+</style>
+  </head>
+  <body>
+      <proof-tree>
+        <div slot="forest">
+          <proof-tree>
+            <div slot="forest">
+              <proof-tree>
+                <div slot="forest">
+                  <proof-tree>
+                    <div slot="forest">
+                      <proof-tree>
+                        <div slot="forest">
+                          <proof-tree>
+                            <div contenteditable="true" slot="proposition">R</div><div slot="inference">(3)</div>
+                          </proof-tree>
+                          <proof-tree>
+                            <div contenteditable="true" slot="proposition">R->P</div><div slot="inference">(2)</div>
+                          </proof-tree>
+                        </div>
+                        <div contenteditable="true" slot="proposition">P</div><div slot="inference">->E</div>
+                      </proof-tree>
+                      <proof-tree>
+                        <div contenteditable="true" slot="proposition">P->Q</div><div slot="inference">(1)</div>
+                      </proof-tree>
+                    </div>
+                    <div contenteditable="true" slot="proposition">Q</div><div slot="inference">->E</div>
+                  </proof-tree>
+                </div>
+                <div contenteditable="true" slot="proposition">R->Q</div><div slot="inference">->I(3)</div>
+              </proof-tree>
+            </div>
+            <div contenteditable="true" slot="proposition">(R->P)->(R->Q)</div><div slot="inference">->I(2)</div>
+          </proof-tree>
+        </div>
+        <div contenteditable="true" slot="proposition">(P->Q)->((R->P)->(R->Q))</div><div slot="inference">->I(1)</div>
+      </proof-tree>
+  </body>
+</html>

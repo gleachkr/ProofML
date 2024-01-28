@@ -1,0 +1,152 @@
+function mergeBoxes(box1, box2) {
+  const leftEdge = Math.min(box1.x, box2.x)
+  const bottomEdge = Math.min(box1.y, box2.y)
+  return new DOMRect(
+    leftEdge,
+    bottomEdge,
+    Math.max(box1.right - leftEdge, box2.right - leftEdge),
+    Math.max(box1.top - bottomEdge, box2.top - bottomEdge),
+  )
+}
+
+class Tree extends HTMLElement {
+
+  constructor() {
+    super()
+    this.attachShadow({ mode: "open" })
+  }
+
+  connectedCallback() {
+    if (!this.initialized) {
+      this.styleSheet = document.createElement("style")
+
+      this.forestSlot = document.createElement("slot")
+      this.forestSlot.setAttribute("name", "forest")
+
+      this.propositionSlot = document.createElement("slot")
+      this.propositionSlot.setAttribute("name", "proposition")
+
+      this.inferenceSlot = document.createElement("slot")
+      this.inferenceSlot.setAttribute("name", "inference")
+
+      this.node = document.createElement("div")
+      this.node.id = "node"
+
+      this.leftStrut = document.createElement("div")
+      this.leftStrut.id = "left-strut"
+
+      this.rightStrut = document.createElement("div")
+      this.rightStrut.id = "right-strut"
+
+      this.shadowRoot.appendChild(this.styleSheet)
+      this.shadowRoot.appendChild(this.forestSlot)
+      this.shadowRoot.appendChild(this.node)
+
+      this.node.appendChild(this.leftStrut)
+      this.node.appendChild(this.propositionSlot)
+      this.node.appendChild(this.rightStrut)
+
+      this.rightStrut.appendChild(this.inferenceSlot)
+      this.inferenceOffset = 0
+
+      this.listener = new ResizeObserver(() => {
+        this.dispatchEvent(new Event("proofml-resize", { "bubbles": true }))
+        this.adjustLabels()
+      })
+
+      this.propositionSlot.addEventListener("slotchange", () => {
+        this.listener.disconnect()
+        this.propositionSlot.assignedElements().forEach(elt => this.listener.observe(elt))
+        this.adjustLabels()
+      })
+
+      this.addEventListener("proofml-resize", ev => {
+        if (ev.target != this) {
+          this.adjustLabels()
+          ev.stopPropagation()
+        }
+      })
+
+      this.initialized = true;
+    }
+
+    this.inForest = this.parentElement.getAttribute("slot") == "forest"
+    this.styleSheet.textContent = this.getStyleContent()
+  }
+
+  getPropClientRect() {
+    return this.propositionSlot.assignedElements()
+      .map(elt => elt.getBoundingClientRect())
+      .reduce(mergeBoxes)
+  }
+
+  adjustLabels() {
+    const stems = this.forestSlot.assignedElements()
+      .map(elt => [...elt.children])
+      .flat()
+    if (stems.length == 0) {
+      this.inferenceOffset = 0
+      this.styleSheet.textContent = this.getStyleContent()
+    } else {
+      const stembox = stems
+        .map(elt => elt.getPropClientRect() || elt.getBoundingClientRect())
+        .reduce(mergeBoxes)
+      const rootbox = this.getPropClientRect()
+      this.inferenceOffset = Math.max(0, stembox.right - rootbox.right)
+      this.styleSheet.textContent = this.getStyleContent()
+    }
+  }
+
+  getStyleContent() {
+    return `
+    #node {
+      display:grid;
+      grid-template-columns: 1fr max-content 1fr;
+    }
+
+    ::slotted([slot=forest]) {
+      display:flex;
+      justify-content:space-around;
+    }
+
+    ::slotted([slot=proposition]) {
+      padding: 0px 5px 0px 5px;
+      margin-bottom:-1px;
+      border-top:1px solid black;
+    }
+
+    #left-strut, #right-strut {
+      margin-bottom:-1px;
+      position:relative;
+    }
+
+    ${!this.inForest ? "" : ` ::slotted([slot=proposition]) {
+      border-bottom:1px solid black;
+    }`}
+
+    :host {
+      display:inline-flex;
+      flex-direction:column;
+      justify-content:end;
+    }
+
+    ::slotted([slot=inference]) {
+      position:absolute;
+      bottom:15px;
+      left:${this.inferenceOffset}px;
+      white-space: nowrap;
+    }
+
+    ${!this.inForest ? "" : `:host(:not(:first-child)) #left-strut {
+      border-bottom:1px solid black;
+      min-width:15px;
+    }`}
+
+    ${!this.inForest ? "" : `:host(:not(:last-child)) #right-strut {
+      border-bottom:1px solid black;
+      min-width:15px;
+    }`}
+  `}
+}
+
+window.customElements.define("proof-tree", Tree)
