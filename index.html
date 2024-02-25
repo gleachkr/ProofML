@@ -27,7 +27,7 @@
       font-weight:400;
     }
     
-    proof-root:not(:defined) {
+    proof-tree:not(:defined) {
       display: none;
     }
 
@@ -43,8 +43,13 @@
     figure {
       display:flex;
       justify-content:center;
-      --proofml-font-size: 1.2rem;
-      --proofml-font-family: 'Fira Logic', monospace;
+    }
+
+    figure.standard-proof {
+      font-size: 1.2rem;
+      font-family: 'Fira Logic', monospace;
+      --kern-left:20px;
+      --kern-right:25px;
     }
 
     p {
@@ -79,7 +84,7 @@
       paragraphs and ordered lists?
     </p>
     <p>Kind of like...</p>
-    <figure>
+    <figure class="standard-proof">
       <proof-tree>
         <proof-forest>
           <proof-tree>
@@ -91,60 +96,59 @@
                       <proof-tree>
                         <proof-forest>
                           <proof-tree>
-                            <proof-tree-proposition>R</proof-tree-proposition><proof-tree-inference>(3)</proof-tree-inference>
+                            <div slot="proposition">R</div><div slot="inference">(3)</div>
                           </proof-tree>
                           <proof-tree>
-                            <proof-tree-proposition>R->P</proof-tree-proposition><proof-tree-inference>(2)</proof-tree-inference>
+                            <div slot="proposition">R->P</div><div slot="inference">(2)</div>
                           </proof-tree>
                         </proof-forest>
-                        <proof-tree-proposition>P</proof-tree-proposition><proof-tree-inference>->E</proof-tree-inference>
+                        <div slot="proposition">P</div><div slot="inference">->E</div>
                       </proof-tree>
                       <proof-tree>
-                        <proof-tree-proposition>P->Q</proof-tree-proposition><proof-tree-inference>(1)</proof-tree-inference>
+                        <div slot="proposition">P->Q</div><div slot="inference">(1)</div>
                       </proof-tree>
                     </proof-forest>
-                    <proof-tree-proposition>Q</proof-tree-proposition><proof-tree-inference>->E</proof-tree-inference>
+                    <div slot="proposition">Q</div><div slot="inference">->E</div>
                   </proof-tree>
                 </proof-forest>
-                <proof-tree-proposition>R->Q</proof-tree-proposition><proof-tree-inference>->I(3)</proof-tree-inference>
+                <div slot="proposition">R->Q</div><div slot="inference">->I(3)</div>
               </proof-tree>
             </proof-forest>
-            <proof-tree-proposition>(R->P)->(R->Q)</proof-tree-proposition><proof-tree-inference>->I(2)</proof-tree-inference>
+            <div slot="proposition">(R->P)->(R->Q)</div><div slot="inference">->I(2)</div>
           </proof-tree>
         </proof-forest>
-        <proof-tree-proposition>(P->Q)->((R->P)->(R->Q))</proof-tree-proposition><proof-tree-inference>->I(1)</proof-tree-inference>
+        <div slot="proposition">(P->Q)->((R->P)->(R->Q))</div><div slot="inference">->I(1)</div>
       </proof-tree>
     </figure>
     <p>You should be able to combine a proof with tools like \(\KaTeX\), of course:</p>
     <figure>
       <proof-tree>
         <proof-forest>
-          <proof-tree-proposition>\(\Gamma\vdash\Lambda X.t:\forall X.T\)</proof-tree-proposition>
-          <proof-tree-proposition>\(U : \mathsf{Type}\)</proof-tree-proposition>
+          <div>\(\Gamma\vdash\Lambda X.t:\forall X.T\)</div>
+          <div>\(U : \mathsf{Type}\)</div>
         </proof-forest>
-        <proof-tree-proposition>\(\Gamma\vdash (\Lambda X.t:\forall X.T)U\equiv t[U/X]:T[U/X]\)</proof-tree-proposition><proof-tree-inference>\(\beta\)</proof-tree-inference>
+        <div slot="proposition">\(\Gamma\vdash (\Lambda X.t:\forall X.T)U\equiv t[U/X]:T[U/X]\)</div><div slot="inference">\(\beta\)</div>
       </proof-tree>
     </figure>
     <p>And it'd be nice to be able to build proofs out of syntax-highlighted code blocks, using Prism.js or whatever…</p>
     <figure>
       <proof-tree>
         <proof-forest>
-          <proof-tree-proposition><code class="language-haskell">(m >>= g) >>= h == k</code></proof-tree-proposition>
+          <div><code class="language-haskell">(m >>= g) >>= h == k</code></div>
         </proof-forest>
-        <proof-tree-proposition><code class="language-haskell">m >>= (\x -> g x >>= h) == k</code></proof-tree-proposition><proof-tree-inference>Assoc</proof-tree-inference>
+        <div slot="proposition"><code class="language-haskell">m >>= (\x -> g x >>= h) == k</code></div><div slot="inference">Assoc</div>
       </proof-tree>
     </figure>
-    <p>It would also make sense to be able to edit proofs, like by including editable elements, or applying <code>contenteditable</code>. The layout should resize naturally.
+    <p>It would also make sense to be able to edit proofs, like by including editable elements, or applying <code>contenteditable</code>. The layout should resize naturally.</p>
     <figure>
       <proof-tree>
         <proof-forest>
-          <proof-tree-proposition>P→¬?</proof-tree-proposition>
-          <proof-tree-proposition><div contenteditable style="width:fit-content;">?</div></proof-tree-proposition>
+          <div>P→¬?</div>
+          <div><div contenteditable style="width:fit-content;">?</div></div>
         </proof-forest>
-        <proof-tree-proposition>¬P</proof-tree-proposition><proof-tree-inference>MT</proof-tree-inference>
+        <div slot="proposition">¬P</div><div slot="inferenece">MT</div>
       </proof-tree>
     </figure>
-
   </main>
 </body>
 
