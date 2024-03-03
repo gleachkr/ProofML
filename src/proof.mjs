@@ -111,23 +111,24 @@ class Tree extends HTMLElement {
 
     ::slotted([slot=proposition]) {
       padding: 0px 5px 0px 5px;
-      margin-bottom:-1px;
-      border-top:1px solid black;
+      margin-bottom: calc(-1 * var(--border-width-internal));
+      border-top: var(--border-width-internal) solid black;
     }
 
     #left-strut, #right-strut {
-      margin-bottom:-1px;
+      margin-bottom: calc(-1 * var(--border-width-internal));
       position:relative;
     }
 
     ${!this.inForest ? "" : ` ::slotted([slot=proposition]) {
-      border-bottom:1px solid black;
+      border-bottom: var(--border-width-internal) solid black;
     }`}
 
     :host {
       display:inline-flex;
       flex-direction:column;
       justify-content:end;
+      --border-width-internal: var(--border-width, 1px);
       --inference-size-internal: var(--inference-size, .6em);
       --kern-right-internal: var(--kern-right, 15px);
       --kern-left-internal: var(--kern-left, 15px);
@@ -142,13 +143,13 @@ class Tree extends HTMLElement {
     }
 
     ${!this.inForest ? "" : `:host(:not(:first-child)) #left-strut {
-      border-bottom:1px solid black;
-      min-width:var(--kern-left-internal);
+      border-bottom: var(--border-width-internal) solid black;
+      min-width: var(--kern-left-internal);
     }`}
 
     ${!this.inForest ? "" : `:host(:not(:last-child)) #right-strut {
-      border-bottom:1px solid black;
-      min-width:var(--kern-right-internal);
+      border-bottom: var(--border-width-internal) solid black;
+      min-width: var(--kern-right-internal);
     }`}
   `}
 }
@@ -173,11 +174,12 @@ class Forest extends HTMLElement {
       :host {
         display:flex;
         justify-content:space-around;
+        --border-width-internal: var(--border-width, 1px);
       }
 
       ::slotted(:not(proof-tree)) {
-        border-bottom: 1px solid black;
-        margin-bottom: -1px;
+        border-bottom: var(--border-width-internal) solid black;
+        margin-bottom: calc(-1 * var(--border-width-internal));
       }
       `
 
