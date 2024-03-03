@@ -47,7 +47,8 @@ class Tree extends HTMLElement {
       this.node.appendChild(this.rightStrut)
 
       this.rightStrut.appendChild(this.inferenceSlot)
-      this.inferenceOffset = 0
+      this.inferenceOffsetX = 0
+      this.inferenceOffsetY = 0
 
       this.listener = new ResizeObserver(() => {
         this.dispatchEvent(new Event("proofml-resize", { "bubbles": true }))
@@ -84,17 +85,27 @@ class Tree extends HTMLElement {
     const stems = this.forestSlot.assignedElements()
       .map(elt => [...elt.children])
       .flat()
+    const rootbox = this.getPropClientRect()
     if (stems.length == 0) {
-      this.inferenceOffset = 0
-      this.styleSheet.textContent = this.getStyleContent()
+      this.inferenceOffsetX = 0
     } else {
       const stembox = stems
         .map(elt => elt.getPropClientRect?.() || elt.getBoundingClientRect())
         .reduce(mergeBoxes)
-      const rootbox = this.getPropClientRect()
-      this.inferenceOffset = Math.max(0, stembox.right - rootbox.right)
-      this.styleSheet.textContent = this.getStyleContent()
+      this.inferenceOffsetX = Math.max(0, stembox.right - rootbox.right)
     }
+
+    const labels = this.inferenceSlot.assignedElements()
+    if (labels.length == 0) {
+      this.inferenceOffsetY = 0
+    } else {
+      const labelbox = labels
+        .map(elt => elt.getPropClientRect?.() || elt.getBoundingClientRect())
+        .reduce(mergeBoxes)
+      this.inferenceOffsetY = rootbox.height - (labelbox.height / 2)
+    }
+    console.log(this.inferenceOffsetY)
+    this.styleSheet.textContent = this.getStyleContent()
   }
 
   getStyleContent() {
@@ -136,9 +147,9 @@ class Tree extends HTMLElement {
 
     ::slotted([slot=inference]) {
       position:absolute;
-      bottom:1.5em;
+      bottom:${this.inferenceOffsetY}px;
       font-size: var(--inference-size-internal);
-      left:${this.inferenceOffset}px;
+      left:${this.inferenceOffsetX}px;
       white-space: nowrap;
     }
 
