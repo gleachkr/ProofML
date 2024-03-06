@@ -123,7 +123,7 @@ class Tree extends HTMLElement {
     ::slotted([slot=proposition]) {
       padding: 0px 5px 0px 5px;
       margin-bottom: calc(-1 * var(--border-width-internal));
-      border-top: var(--border-width-internal) solid black;
+      border-top: var(--border-width-internal) solid var(--border-color-internal);
     }
 
     #left-strut, #right-strut {
@@ -132,7 +132,7 @@ class Tree extends HTMLElement {
     }
 
     ${!this.inForest ? "" : ` ::slotted([slot=proposition]) {
-      border-bottom: var(--border-width-internal) solid black;
+      border-bottom: var(--border-width-internal) solid var(--border-color-internal);
     }`}
 
     :host {
@@ -140,6 +140,7 @@ class Tree extends HTMLElement {
       flex-direction:column;
       justify-content:end;
       --border-width-internal: var(--border-width, 1px);
+      --border-color-internal: var(--border-color, black);
       --inference-size-internal: var(--inference-size, .6em);
       --kern-right-internal: var(--kern-right, 15px);
       --kern-left-internal: var(--kern-left, 15px);
@@ -154,12 +155,12 @@ class Tree extends HTMLElement {
     }
 
     ${!this.inForest ? "" : `:host(:not(:first-child)) #left-strut {
-      border-bottom: var(--border-width-internal) solid black;
+      border-bottom: var(--border-width-internal) solid var(--border-color-internal);
       min-width: var(--kern-left-internal);
     }`}
 
     ${!this.inForest ? "" : `:host(:not(:last-child)) #right-strut {
-      border-bottom: var(--border-width-internal) solid black;
+      border-bottom: var(--border-width-internal) solid var(--border-color-internal);
       min-width: var(--kern-right-internal);
     }`}
   `}
@@ -186,10 +187,11 @@ class Forest extends HTMLElement {
         display:flex;
         justify-content:space-around;
         --border-width-internal: var(--border-width, 1px);
+        --border-color-internal: var(--border-color, black)
       }
 
       ::slotted(:not(proof-tree)) {
-        border-bottom: var(--border-width-internal) solid black;
+        border-bottom: var(--border-width-internal) solid var(--border-color-internal);
         margin-bottom: calc(-1 * var(--border-width-internal));
       }
       `
