@@ -5,7 +5,9 @@ string.trim = function(self) return self:gsub("^%s*(.-)%s*$", "%1") end
 local writer_options = pandoc.WriterOptions(PANDOC_WRITER_OPTIONS)
 local reader_options = pandoc.ReaderOptions(PANDOC_READER_OPTIONS)
 local function to_pandoc(s)
-    return pandoc.write(pandoc.read(s, "markdown", reader_options),"html",writer_options)
+    local html = pandoc.write(pandoc.read(s, "markdown", reader_options),"html",writer_options)
+    html = html:match("<p>(.*)</p>") or html
+    return html
 end
 
 local function render(tree)
