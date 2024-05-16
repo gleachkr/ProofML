@@ -2,21 +2,13 @@ table.append = function (self, ele) table.insert(self, #self + 1, ele) end
 
 string.trim = function(self) return self:gsub("^%s*(.-)%s*$", "%1") end
 
-local function dump(o)
-   if type(o) == 'table' then
-      local s = '{ '
-      for k,v in pairs(o) do
-         if type(k) ~= 'number' then k = '"'..k..'"' end
-         s = s .. k..' = ' .. dump(v) .. ','
-      end
-      return s .. '} '
-   else
-      return tostring(o)
-   end
+local writer_options = pandoc.WriterOptions(PANDOC_WRITER_OPTIONS)
+local reader_options = pandoc.ReaderOptions(PANDOC_READER_OPTIONS)
+local function to_pandoc(s)
+    return pandoc.write(pandoc.read(s, "markdown", reader_options),"html",writer_options)
 end
 
 local function render(tree)
-    local prop = '<div slot="proposition">' .. tree.root.contents:trim() .. '</div>'
     local children = ""
     local rule = ""
     if tree.children and #tree.children > 0 then
@@ -33,8 +25,10 @@ local function render(tree)
     if not (children == "") then
         children = "<proof-forest>" .. children .. "</proof-forest>"
     end
+    local rootContents = tree.root.contents:trim()
+    local prop = '<div slot="proposition">' .. to_pandoc(rootContents) .. '</div>'
     if rule:match("%S") then
-        rule = '<div slot="inference">' .. rule .. '</div>'
+        rule = '<div slot="inference">' .. to_pandoc(rule) .. '</div>'
     end
     return "<proof-tree>\n" .. children .. prop .. rule .. "</proof-tree>\n"
 end
