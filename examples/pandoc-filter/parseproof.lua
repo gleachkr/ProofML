@@ -4,6 +4,7 @@ string.trim = function(self) return self:gsub("^%s*(.-)%s*$", "%1") end
 
 local writer_options = pandoc.WriterOptions(PANDOC_WRITER_OPTIONS)
 local reader_options = pandoc.ReaderOptions(PANDOC_READER_OPTIONS)
+
 local function to_pandoc(s)
     local html = pandoc.write(pandoc.read(s, "markdown", reader_options),"html",writer_options)
     html = html:match("<p>(.*)</p>") or html
@@ -39,7 +40,6 @@ local function overlaps(r1,r2)
     return (r1.thestart < r2.theend) and (r1.theend > r2.thestart)
 end
 
-
 local function tabularize (p)
     local lines = {}
     for line in p:gmatch("(.-)\n") do
@@ -49,11 +49,11 @@ local function tabularize (p)
     for k,v in ipairs(lines) do
         local spot = 0
         bounds[k] = {}
-        while not (spot == nil) and spot < #v do
+        while not (spot == nil) and spot < #v and v:match("%S") do
             local thestart, theend = v:find("%s%s+%S",spot)
             if not (thestart == 1)  then
-                if (spot == 0) then table.append(bounds[k], 1) end
-                if not (thestart == nil) then table.append(bounds[k], thestart) end
+                if (spot == 0) then table.append(bounds[k], 1)
+                elseif not (thestart == nil) then table.append(bounds[k], thestart) end
             end
             if not (theend == #v) then
                 if (theend == nil) then table.append(bounds[k], #v); break
