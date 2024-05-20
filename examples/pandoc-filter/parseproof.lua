@@ -49,7 +49,7 @@ local function tabularize (p)
     for k,v in ipairs(lines) do
         local spot = 0
         bounds[k] = {}
-        while not (spot == nil) and spot < #v and v:match("%S") do
+        while not (spot == nil) and not (spot > #v) and v:match("%S") do
             local thestart, theend = v:find("%s%s+%S",spot)
             if not (thestart == 1)  then
                 if (spot == 0) then table.append(bounds[k], 1)
