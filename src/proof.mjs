@@ -210,6 +210,16 @@ class Forest extends HTMLElement {
       }
       `
 
+      this.listener = new ResizeObserver(() => {
+        this.dispatchEvent(new Event("proofml-resize", { "bubbles": true }))
+      })
+
+      this.mainSlot.addEventListener("slotchange", () => {
+        this.listener.disconnect()
+        this.mainSlot.assignedElements().forEach(
+          elt => this.listener.observe(elt)
+        )
+      })
       this.initialized = true;
     }
   }
