@@ -30,15 +30,19 @@ local function render(tree)
             children = render(tree.children[1])
         end
     end
-    if not (children == "") then
-        children = "<proof-forest>" .. children .. "</proof-forest>"
-    end
+
     local rootContents = tree.root.contents:trim()
-    local prop = '<div slot="proposition">' .. to_pandoc(rootContents) .. '</div>'
-    if rule:match("%S") then
-        rule = '<div slot="inference">' .. to_pandoc(rule) .. '</div>'
+
+    if children == "" then
+        return "<div>" .. to_pandoc(rootContents) .. "</div>"
+    else
+        children = "<proof-forest>" .. children .. "</proof-forest>"
+        local prop = '<div slot="proposition">' .. to_pandoc(rootContents) .. '</div>'
+        if rule:match("%S") then
+            rule = '<div slot="inference">' .. to_pandoc(rule) .. '</div>'
+        end
+        return "<proof-tree>\n" .. children .. prop .. rule .. "</proof-tree>\n"
     end
-    return "<proof-tree>\n" .. children .. prop .. rule .. "</proof-tree>\n"
 end
 
 local function overlaps(r1,r2)
