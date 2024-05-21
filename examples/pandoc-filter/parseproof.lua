@@ -2,8 +2,13 @@ table.append = function (self, ele) table.insert(self, #self + 1, ele) end
 
 string.trim = function(self) return self:gsub("^%s*(.-)%s*$", "%1") end
 
-local writer_options = pandoc.WriterOptions({pandoc.WriterOptions(PANDOC_WRITER_OPTIONS).html_math_options})
-local reader_options = pandoc.ReaderOptions({pandoc.ReaderOptions(PANDOC_READER_OPTIONS).html_math_options})
+local writer_options = pandoc.WriterOptions({
+    html_math_method = pandoc.WriterOptions(PANDOC_WRITER_OPTIONS).html_math_method
+})
+
+local reader_options = pandoc.ReaderOptions({
+    html_math_method = pandoc.ReaderOptions(PANDOC_READER_OPTIONS).html_math_method
+})
 
 local function to_pandoc(s)
     local html = pandoc.write(pandoc.read(s, "markdown", reader_options),"html",writer_options)
