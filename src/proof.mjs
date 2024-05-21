@@ -104,7 +104,6 @@ class Tree extends HTMLElement {
         .reduce(mergeBoxes)
       this.inferenceOffsetY = rootbox.height - (labelbox.height / 2)
     }
-    console.log(this.inferenceOffsetY)
     this.styleSheet.textContent = this.getStyleContent()
   }
 
@@ -187,7 +186,8 @@ class Forest extends HTMLElement {
         display:flex;
         justify-content:space-around;
         --border-width-internal: var(--border-width, 1px);
-        --border-color-internal: var(--border-color, black)
+        --border-color-internal: var(--border-color, black);
+        --foreign-spacing-internal: var(--foreign-spacing,15px)
       }
 
       ::slotted(:not(proof-tree)) {
@@ -195,6 +195,18 @@ class Forest extends HTMLElement {
         margin-bottom: calc(-1 * var(--border-width-internal));
         display:flex;
         flex-direction:column-reverse;
+        padding-right:var(--foreign-spacing-internal);
+        padding-left:var(--foreign-spacing-internal);
+      }
+
+      ::slotted(:not(proof-tree):first-child) {
+        padding-left:0px;
+        margin-left:var(--foreign-spacing-internal);
+      }
+
+      ::slotted(:not(proof-tree):last-child) {
+        padding-right:0px;
+        margin-right:var(--foreign-spacing-internal);
       }
       `
 
