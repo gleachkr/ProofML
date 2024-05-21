@@ -193,6 +193,8 @@ class Forest extends HTMLElement {
       ::slotted(:not(proof-tree)) {
         border-bottom: var(--border-width-internal) solid var(--border-color-internal);
         margin-bottom: calc(-1 * var(--border-width-internal));
+        display:flex;
+        flex-direction:column-reverse;
       }
       `
 
