@@ -201,12 +201,12 @@ class Forest extends HTMLElement {
 
       ::slotted(:not(proof-tree):first-child) {
         padding-left:0px;
-        margin-left:var(--foreign-spacing-internal);
+        margin-left:calc(2*var(--foreign-spacing-internal));
       }
 
       ::slotted(:not(proof-tree):last-child) {
         padding-right:0px;
-        margin-right:var(--foreign-spacing-internal);
+        margin-right:calc(2*var(--foreign-spacing-internal));
       }
       `
 
@@ -225,5 +225,26 @@ class Forest extends HTMLElement {
   }
 }
 
+class Inference extends HTMLElement {
+  connectedCallback() {
+    if (!this.initialized) {
+      this.setAttribute("slot", "inference")
+      this.initialized = true
+    }
+  }
+}
+
+class Proposition extends HTMLElement {
+  connectedCallback() {
+    if (this.parentElement.tagName == "PROOF-TREE") {
+      this.setAttribute("slot", "proposition")
+    } else {
+      this.removeAttribute("slot")
+    }
+  }
+}
+
 window.customElements.define("proof-tree", Tree)
+window.customElements.define("proof-proposition", Proposition)
+window.customElements.define("proof-inference", Inference)
 window.customElements.define("proof-forest", Forest)

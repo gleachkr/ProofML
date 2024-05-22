@@ -34,12 +34,12 @@ local function render(tree)
     local rootContents = tree.root.contents:trim()
 
     if children == "" then
-        return "<div>" .. to_pandoc(rootContents) .. "</div>"
+        return "<proof-proposition>" .. to_pandoc(rootContents) .. "</proof-proposition>"
     else
         children = "<proof-forest>" .. children .. "</proof-forest>"
-        local prop = '<div slot="proposition">' .. to_pandoc(rootContents) .. '</div>'
+        local prop = '<proof-proposition>' .. to_pandoc(rootContents) .. '</proof-proposition>'
         if rule:match("%S") then
-            rule = '<div slot="inference">' .. to_pandoc(rule) .. '</div>'
+            rule = '<proof-inference>' .. to_pandoc(rule) .. '</proof-inference>'
         end
         return "<proof-tree>\n" .. children .. prop .. rule .. "</proof-tree>\n"
     end
