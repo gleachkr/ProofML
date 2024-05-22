@@ -82,6 +82,9 @@ class Tree extends HTMLElement {
   }
 
   adjustLabels() {
+    //needed to compensate for CSS scaling. This assumes scaling is uniform.
+    const scalefactor = this.offsetWidth / this.getBoundingClientRect().width
+    console.log(scalefactor)
     const stems = this.forestSlot.assignedElements()
       .map(elt => [...elt.children])
       .flat()
@@ -92,7 +95,7 @@ class Tree extends HTMLElement {
       const stembox = stems
         .map(elt => elt.getPropClientRect?.() || elt.getBoundingClientRect())
         .reduce(mergeBoxes)
-      this.inferenceOffsetX = Math.max(0, stembox.right - rootbox.right)
+      this.inferenceOffsetX = Math.max(0, stembox.right - rootbox.right) * scalefactor
     }
 
     const labels = this.inferenceSlot.assignedElements()
@@ -100,9 +103,8 @@ class Tree extends HTMLElement {
       this.inferenceOffsetY = 0
     } else {
       const labelbox = labels
-        .map(elt => elt.getPropClientRect?.() || elt.getBoundingClientRect())
-        .reduce(mergeBoxes)
-      this.inferenceOffsetY = rootbox.height - (labelbox.height / 2)
+        .map(elt => elt.getBoundingClientRect()).reduce(mergeBoxes)
+      this.inferenceOffsetY = (rootbox.height - (labelbox.height / 2)) * scalefactor
     }
     this.styleSheet.textContent = this.getStyleContent()
   }
