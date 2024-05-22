@@ -18,13 +18,12 @@ end
 
 local function render(tree)
     local children = ""
-    local rule = ""
+    local inference
     if tree.children and #tree.children > 0 then
-        local inference = tree.children[1].root.contents:match('---+([^%s-]*)')
+        inference = tree.children[1].root.contents:match('---+([^%s-]*)')
         if inference then
             for _,child in ipairs(tree.children[1].children) do
                 children = children .. render(child)
-                rule = inference
             end
         else
             children = render(tree.children[1])
@@ -33,15 +32,15 @@ local function render(tree)
 
     local rootContents = tree.root.contents:trim()
 
-    if children == "" then
+    if children == "" and not inference then
         return "<proof-proposition>" .. to_pandoc(rootContents) .. "</proof-proposition>"
     else
         children = "<proof-forest>" .. children .. "</proof-forest>"
         local prop = '<proof-proposition>' .. to_pandoc(rootContents) .. '</proof-proposition>'
-        if rule:match("%S") then
-            rule = '<proof-inference>' .. to_pandoc(rule) .. '</proof-inference>'
+        if inference:match("%S") then
+            inference = '<proof-inference>' .. to_pandoc(inference) .. '</proof-inference>'
         end
-        return "<proof-tree>\n" .. children .. prop .. rule .. "</proof-tree>\n"
+        return "<proof-tree>\n" .. children .. prop .. inference .. "</proof-tree>\n"
     end
 end
 
