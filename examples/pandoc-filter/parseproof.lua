@@ -40,9 +40,7 @@ local function render(tree, decorator)
 
     local rootContents = tree.root.contents:trim()
     if rootContents and rootContents ~= "" then
-        print (rootContents)
         rootContents = decorator(rootContents)
-        print (rootContents)
     end
     if children == "" and not inference then
         return "<proof-proposition>" .. rootContents .. "</proof-proposition>"
