@@ -133,7 +133,7 @@ function CodeBlock(el)
     if table.contains(el.classes,'proof') then
         local decorator
         if table.contains(el.classes, 'math') then
-            decorator = function(x) return "<span class='math inline'>" .. x .. "</span>" end
+            decorator = function(x) return to_pandoc("$" .. x .. "$") end
         else
             decorator = to_pandoc
         end
