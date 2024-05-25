@@ -2,6 +2,14 @@ table.append = function (self, ele) table.insert(self, #self + 1, ele) end
 
 string.trim = function(self) return self:gsub("^%s*(.-)%s*$", "%1") end
 
+table.contains = function (self, ele)
+    for _,v in ipairs(self) do
+        if v == ele then return true end
+    end
+    return false
+end
+
+
 local writer_options = pandoc.WriterOptions({
     html_math_method = pandoc.WriterOptions(PANDOC_WRITER_OPTIONS).html_math_method
 })
@@ -16,29 +24,37 @@ local function to_pandoc(s)
     return html
 end
 
-local function render(tree)
+local function render(tree, decorator)
     local children = ""
     local inference
     if tree.children and #tree.children > 0 then
         inference = tree.children[1].root.contents:match('---+([^%s-]*)')
         if inference then
             for _,child in ipairs(tree.children[1].children) do
-                children = children .. render(child)
+                children = children .. render(child, decorator)
             end
         else
-            children = render(tree.children[1])
+            children = render(tree.children[1], decorator)
         end
     end
 
     local rootContents = tree.root.contents:trim()
-
+    if rootContents and rootContents ~= "" then
+        print (rootContents)
+        rootContents = decorator(rootContents)
+        print (rootContents)
+    end
     if children == "" and not inference then
-        return "<proof-proposition>" .. to_pandoc(rootContents) .. "</proof-proposition>"
+        return "<proof-proposition>" .. rootContents .. "</proof-proposition>"
+    elseif not inference then
+        children = "<proof-forest>" .. children .. "</proof-forest>"
+        local prop = '<proof-proposition>' .. rootContents .. '</proof-proposition>'
+        return "<proof-tree>\n" .. children .. prop .. "</proof-tree>\n"
     else
         children = "<proof-forest>" .. children .. "</proof-forest>"
-        local prop = '<proof-proposition>' .. to_pandoc(rootContents) .. '</proof-proposition>'
+        local prop = '<proof-proposition>' .. rootContents .. '</proof-proposition>'
         if inference:match("%S") then
-            inference = '<proof-inference>' .. to_pandoc(inference) .. '</proof-inference>'
+            inference = '<proof-inference>' .. inference .. '</proof-inference>'
         end
         return "<proof-tree>\n" .. children .. prop .. inference .. "</proof-tree>\n"
     end
@@ -116,11 +132,17 @@ local function tabularize (p)
 end
 
 function CodeBlock(el)
-    if el.classes[1] == 'proof' then
+    if table.contains(el.classes,'proof') then
+        local decorator
+        if table.contains(el.classes, 'math') then
+            decorator = function(x) return "<span class='math inline'>" .. x .. "</span>" end
+        else
+            decorator = to_pandoc
+        end
         local forest = tabularize(el.text .. ' \n')
         local blocks = {}
         for _,v in ipairs(forest) do
-            table.append(blocks, pandoc.RawBlock("html", render(v)))
+            table.append(blocks, pandoc.RawBlock("html", render(v, decorator)))
         end
         return pandoc.Blocks(blocks)
     else
