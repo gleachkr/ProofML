@@ -10,7 +10,6 @@ function mergeBoxes(box1, box2) {
 }
 
 class Tree extends HTMLElement {
-
   constructor() {
     super()
     this.attachShadow({ mode: "open" })
@@ -38,13 +37,18 @@ class Tree extends HTMLElement {
       this.rightStrut = document.createElement("div")
       this.rightStrut.id = "right-strut"
 
+      this.propWrapper = document.createElement("div")
+      this.propWrapper.id = "prop-wrapper"
+
       this.shadowRoot.appendChild(this.styleSheet)
       this.shadowRoot.appendChild(this.forestSlot)
       this.shadowRoot.appendChild(this.node)
 
       this.node.appendChild(this.leftStrut)
-      this.node.appendChild(this.propositionSlot)
+      this.node.appendChild(this.propWrapper)
       this.node.appendChild(this.rightStrut)
+
+      this.propWrapper.appendChild(this.propositionSlot)
 
       this.rightStrut.appendChild(this.inferenceSlot)
       this.inferenceOffsetX = 0
@@ -52,20 +56,25 @@ class Tree extends HTMLElement {
 
       this.listener = new ResizeObserver(() => {
         this.dispatchEvent(new Event("proofml-resize", { "bubbles": true }))
-        this.adjustLabels()
+        this.handleResize()
       })
 
       this.propositionSlot.addEventListener("slotchange", () => {
         this.listener.disconnect()
         this.propositionSlot.assignedElements().forEach(elt => this.listener.observe(elt))
-        this.adjustLabels()
+        this.handleResize()
       })
 
       this.addEventListener("proofml-resize", ev => {
         if (ev.target != this) {
-          this.adjustLabels()
+          this.handleResize()
           ev.stopPropagation()
         }
+      })
+
+      this.addEventListener("proofml-forest-child-change", ev => {
+        this.styleSheet.textContent = this.getStyleContent()
+        ev.stopPropagation()
       })
 
       this.initialized = true;
@@ -81,21 +90,32 @@ class Tree extends HTMLElement {
       .reduce(mergeBoxes)
   }
 
+  isForestInhabited() {
+    return this.forestSlot.assignedElements()
+      .map(elt => [...elt.children])
+      .flat()
+      .length > 0
+  }
+
   adjustLabels() {
     //needed to compensate for CSS scaling. This assumes scaling is uniform.
     const scalefactor = this.offsetWidth / this.getBoundingClientRect().width
-    console.log(scalefactor)
+
     const stems = this.forestSlot.assignedElements()
       .map(elt => [...elt.children])
       .flat()
-    const rootbox = this.getPropClientRect()
+
+    const rootbox = this.propWrapper.getBoundingClientRect()
+
+    const offsetToProp = this.getPropClientRect().right - rootbox.right
+
     if (stems.length == 0) {
-      this.inferenceOffsetX = 0
+      this.inferenceOffsetX = offsetToProp
     } else {
       const stembox = stems
-        .map(elt => elt.getPropClientRect?.() || elt.getBoundingClientRect())
+        .map(elt => elt.propWrapper?.getBoundingClientRect() || elt.getBoundingClientRect())
         .reduce(mergeBoxes)
-      this.inferenceOffsetX = Math.max(0, stembox.right - rootbox.right) * scalefactor
+      this.inferenceOffsetX = Math.max(offsetToProp, stembox.right - rootbox.right) * scalefactor
     }
 
     const labels = this.inferenceSlot.assignedElements()
@@ -106,6 +126,18 @@ class Tree extends HTMLElement {
         .map(elt => elt.getBoundingClientRect()).reduce(mergeBoxes)
       this.inferenceOffsetY = (rootbox.height - (labelbox.height / 2)) * scalefactor
     }
+  }
+
+  computeNodeMin() {
+    const scalefactor = this.offsetWidth / this.getBoundingClientRect().width
+    //rounding here prevents resize thrashing
+    this.propBelow = Math.floor(scalefactor * this.getPropClientRect().width)
+  }
+
+  handleResize() {
+    console.log('resize')
+    this.adjustLabels()
+    this.computeNodeMin()
     this.styleSheet.textContent = this.getStyleContent()
   }
 
@@ -119,22 +151,25 @@ class Tree extends HTMLElement {
     ::slotted([slot=forest]) {
       display:flex;
       justify-content:space-around;
+      --prop-below:${this.propBelow}px;
     }
 
     ::slotted([slot=proposition]) {
-      padding: 0px 5px 0px 5px;
+      ${this.isForestInhabited() ? "" : "border-top: var(--border-width-internal) solid var(--border-color-internal);"}
+    }
+
+    #prop-wrapper {
       margin-bottom: calc(-1 * var(--border-width-internal));
-      border-top: var(--border-width-internal) solid var(--border-color-internal);
+      ${this.inForest ? "border-bottom: var(--border-width-internal) solid var(--border-color-internal);" : ""}
+      min-width: calc(var(--prop-below) / var(--forest-count));
+      display:flex;
+      justify-content: center;
     }
 
     #left-strut, #right-strut {
       margin-bottom: calc(-1 * var(--border-width-internal));
       position:relative;
     }
-
-    ${!this.inForest ? "" : ` ::slotted([slot=proposition]) {
-      border-bottom: var(--border-width-internal) solid var(--border-color-internal);
-    }`}
 
     :host {
       display:inline-flex;
@@ -143,8 +178,8 @@ class Tree extends HTMLElement {
       --border-width-internal: var(--border-width, 1px);
       --border-color-internal: var(--border-color, black);
       --inference-size-internal: var(--inference-size, .6em);
-      --kern-right-internal: var(--kern-right, 15px);
-      --kern-left-internal: var(--kern-left, 15px);
+      --kern-right-internal: var(--kern-right, 25px);
+      --kern-left-internal: var(--kern-left, 25px);
     }
 
     ::slotted([slot=inference]) {
@@ -201,6 +236,16 @@ class Forest extends HTMLElement {
         padding-left:var(--foreign-spacing-internal);
       }
 
+      ::slotted(proof-proposition) {
+        padding: 0px 5px 0px 5px;
+        margin-bottom: calc(-1 * var(--border-width-internal));
+        border-bottom: var(--border-width-internal) solid var(--border-color-internal);
+        min-width: calc(var(--prop-below) / var(--forest-count));
+        display:flex;
+        justify-content: end;
+        align-items:center;
+      }
+
       ::slotted(:not(proof-tree):first-child) {
         padding-left:0px;
         margin-left:calc(2*var(--foreign-spacing-internal));
@@ -217,8 +262,11 @@ class Forest extends HTMLElement {
       })
 
       this.mainSlot.addEventListener("slotchange", () => {
+        this.dispatchEvent(new Event("proofml-forest-child-change", { "bubbles": true }))
         this.listener.disconnect()
-        this.mainSlot.assignedElements().forEach(
+        const elts = this.mainSlot.assignedElements()
+        this.style.setProperty("--forest-count",elts.length)
+        elts.forEach(
           elt => this.listener.observe(elt)
         )
       })
