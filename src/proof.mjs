@@ -130,8 +130,11 @@ class Tree extends HTMLElement {
 
   computeNodeMin() {
     const scalefactor = this.offsetWidth / this.getBoundingClientRect().width
-    //rounding here prevents resize thrashing
-    this.propBelow = Math.floor(scalefactor * this.getPropClientRect().width)
+    const error = Math.abs(this.propBelow - Math.floor(scalefactor * this.getPropClientRect().width))
+    //making sure the update is big enough prevents resize thrashing
+    if (isNaN(error) || error > 5) {
+      this.propBelow = Math.floor(scalefactor * this.getPropClientRect().width)
+    }
   }
 
   handleResize() {
@@ -155,11 +158,10 @@ class Tree extends HTMLElement {
     }
 
     ::slotted([slot=proposition]) {
-      ${this.isForestInhabited() ? "" : "border-top: var(--border-width-internal) solid var(--border-color-internal);"}
+      ${this.isForestInhabited() ? "" : "border-top: var(--border-width-internal-original) solid var(--border-color-internal);"}
     }
 
     #prop-wrapper {
-      margin-bottom: calc(-1 * var(--border-width-internal));
       ${this.inForest ? "border-bottom: var(--border-width-internal) solid var(--border-color-internal);" : ""}
       min-width: calc(var(--prop-below) / var(--forest-count));
       display:flex;
@@ -167,7 +169,6 @@ class Tree extends HTMLElement {
     }
 
     #left-strut, #right-strut {
-      margin-bottom: calc(-1 * var(--border-width-internal));
       position:relative;
     }
 
@@ -175,7 +176,8 @@ class Tree extends HTMLElement {
       display:inline-flex;
       flex-direction:column;
       justify-content:end;
-      --border-width-internal: var(--border-width, 1px);
+      --border-width-internal: calc(var(--border-width-internal-original) * var(--hide-border, 1));
+      --border-width-internal-original: var(--border-width, 1px);
       --border-color-internal: var(--border-color, black);
       --inference-size-internal: var(--inference-size, .6em);
       --kern-right-internal: var(--kern-right, 25px);
@@ -222,36 +224,30 @@ class Forest extends HTMLElement {
       :host {
         display:flex;
         justify-content:space-around;
-        --border-width-internal: var(--border-width, 1px);
+        --hide-border:1;
+        --border-width-internal: calc(var(--hide-border) * var(--border-width, 1px));
         --border-color-internal: var(--border-color, black);
         --foreign-spacing-internal: var(--foreign-spacing,15px)
       }
 
-      ::slotted(:not(proof-tree)) {
-        border-bottom: var(--border-width-internal) solid var(--border-color-internal);
-        margin-bottom: calc(-1 * var(--border-width-internal));
-        display:flex;
-        flex-direction:column-reverse;
-        padding-right:var(--foreign-spacing-internal);
-        padding-left:var(--foreign-spacing-internal);
-      }
-
       ::slotted(proof-proposition) {
         padding: 0px 5px 0px 5px;
-        margin-bottom: calc(-1 * var(--border-width-internal));
         border-bottom: var(--border-width-internal) solid var(--border-color-internal);
         min-width: calc(var(--prop-below) / var(--forest-count));
         display:flex;
+        padding-right:var(--foreign-spacing-internal);
+        padding-left:var(--foreign-spacing-internal);
+        flex-direction:column-reverse;
         justify-content: end;
         align-items:center;
       }
 
-      ::slotted(:not(proof-tree):first-child) {
+      ::slotted(proof-proposition:first-child) {
         padding-left:0px;
         margin-left:calc(2*var(--foreign-spacing-internal));
       }
 
-      ::slotted(:not(proof-tree):last-child) {
+      ::slotted(proof-proposition:last-child) {
         padding-right:0px;
         margin-right:calc(2*var(--foreign-spacing-internal));
       }

@@ -45,7 +45,7 @@ local function render(tree, decorator)
     if children == "" and not inference then
         return "<proof-proposition>" .. rootContents .. "</proof-proposition>"
     elseif not inference then
-        children = "<proof-forest>" .. children .. "</proof-forest>"
+        children = '<proof-forest style="--hide-border:0;">' .. children .. '</proof-forest>'
         local prop = '<proof-proposition>' .. rootContents .. '</proof-proposition>'
         return "<proof-tree>\n" .. children .. prop .. "</proof-tree>\n"
     else
