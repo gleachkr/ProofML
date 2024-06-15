@@ -138,7 +138,6 @@ class Tree extends HTMLElement {
   }
 
   handleResize() {
-    console.log('resize')
     this.adjustLabels()
     this.computeNodeMin()
     this.styleSheet.textContent = this.getStyleContent()
