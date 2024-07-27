@@ -9,29 +9,26 @@ table.contains = function (self, ele)
     return false
 end
 
-
-local writer_options = pandoc.WriterOptions({
-    html_math_method = pandoc.WriterOptions(PANDOC_WRITER_OPTIONS).html_math_method
-})
-
 local reader_options = pandoc.ReaderOptions({
     html_math_method = pandoc.ReaderOptions(PANDOC_READER_OPTIONS).html_math_method
 })
 
 local function to_pandoc(s)
-    local html = pandoc.write(pandoc.read(s, "markdown", reader_options),"html",writer_options)
-    html = html:match("<p>(.*)</p>") or html
-    return html
+    local doc = pandoc.read(s, "markdown", reader_options)
+    return pandoc.Plain(doc.blocks[1].content)
 end
 
 local function render(tree, decorator)
-    local children = ""
+    local children = {}
     local inference
     if tree.children and #tree.children > 0 then
         inference = tree.children[1].root.contents:match('---+([^%s-]*)')
         if inference then
             for _,child in ipairs(tree.children[1].children) do
-                children = children .. render(child, decorator)
+                local childArray = render(child, decorator)
+                for _,childArrayElt in ipairs(childArray) do
+                    table.insert(children, childArrayElt)
+                end
             end
         else
             children = render(tree.children[1], decorator)
@@ -42,19 +39,33 @@ local function render(tree, decorator)
     if rootContents and rootContents ~= "" then
         rootContents = decorator(rootContents)
     end
-    if children == "" and not inference then
-        return "<proof-proposition>" .. rootContents .. "</proof-proposition>"
+    if #children == 0 and not inference then
+        return {
+            pandoc.RawBlock("html", "<proof-proposition>"),
+            rootContents,
+            pandoc.RawBlock("html", "</proof-proposition>"),
+        }
     elseif not inference then
-        children = '<proof-forest style="--hide-border:0;">' .. children .. '</proof-forest>'
-        local prop = '<proof-proposition>' .. rootContents .. '</proof-proposition>'
-        return "<proof-tree>\n" .. children .. prop .. "</proof-tree>\n"
+        table.insert(children, 1, pandoc.RawBlock("html", '<proof-tree><proof-forest style="--hide-border:0;">'))
+        table.insert(children, pandoc.RawBlock("html", '</proof-forest>'))
+        table.insert(children, pandoc.RawBlock("html", '<proof-proposition>'))
+        table.insert(children, pandoc.Blocks(rootContents))
+        table.insert(children, pandoc.RawBlock("html", '</proof-proposition>'))
+        table.insert(children, pandoc.RawBlock("html", '</proof-tree>'))
+        return children
     else
-        children = "<proof-forest>" .. children .. "</proof-forest>"
-        local prop = '<proof-proposition>' .. rootContents .. '</proof-proposition>'
+        table.insert(children, 1, pandoc.RawBlock("html", '<proof-tree><proof-forest>'))
+        table.insert(children, pandoc.RawBlock("html", '</proof-forest>'))
+        table.insert(children, pandoc.RawBlock("html", '<proof-proposition>'))
+        table.insert(children, rootContents)
+        table.insert(children, pandoc.RawBlock("html", '</proof-proposition>'))
         if inference:match("%S") then
-            inference = '<proof-inference>' .. inference .. '</proof-inference>'
+            table.insert(children, pandoc.RawBlock('html', '<proof-inference>'))
+            table.insert(children, to_pandoc(inference))
+            table.insert(children, pandoc.RawBlock('html', '</proof-inference>'))
         end
-        return "<proof-tree>\n" .. children .. prop .. inference .. "</proof-tree>\n"
+        table.insert(children, pandoc.RawBlock("html", '</proof-tree>'))
+        return children
     end
 end
 
@@ -140,7 +151,9 @@ function CodeBlock(el)
         local forest = tabularize(el.text .. ' \n')
         local blocks = {}
         for _,v in ipairs(forest) do
-            table.append(blocks, pandoc.RawBlock("html", render(v, decorator)))
+            for _,block  in ipairs(render(v, decorator)) do
+                table.append(blocks,block)
+            end
         end
         return pandoc.Blocks(blocks)
     else
