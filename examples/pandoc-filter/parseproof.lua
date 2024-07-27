@@ -47,16 +47,13 @@ local function render(tree, decorator)
         }
     elseif not inference then
         table.insert(children, 1, pandoc.RawBlock("html", '<proof-tree><proof-forest style="--hide-border:0;">'))
-        table.insert(children, pandoc.RawBlock("html", '</proof-forest>'))
-        table.insert(children, pandoc.RawBlock("html", '<proof-proposition>'))
+        table.insert(children, pandoc.RawBlock("html", '</proof-forest><proof-proposition>'))
         table.insert(children, pandoc.Blocks(rootContents))
-        table.insert(children, pandoc.RawBlock("html", '</proof-proposition>'))
-        table.insert(children, pandoc.RawBlock("html", '</proof-tree>'))
+        table.insert(children, pandoc.RawBlock("html", '</proof-proposition></proof-tree>'))
         return children
     else
         table.insert(children, 1, pandoc.RawBlock("html", '<proof-tree><proof-forest>'))
-        table.insert(children, pandoc.RawBlock("html", '</proof-forest>'))
-        table.insert(children, pandoc.RawBlock("html", '<proof-proposition>'))
+        table.insert(children, pandoc.RawBlock("html", '</proof-forest><proof-proposition>'))
         table.insert(children, rootContents)
         table.insert(children, pandoc.RawBlock("html", '</proof-proposition>'))
         if inference:match("%S") then
