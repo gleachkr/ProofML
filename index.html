@@ -21,6 +21,14 @@
       font-size:24px;
       font-family: 'Fira Sans', sans;
       font-weight:300;
+      /* Hidden until fonts, custom elements, and KaTeX have settled, to avoid
+         a flash of unstyled proofs/math on load. Revealed by the script below. */
+      opacity:0;
+    }
+
+    html.ready {
+      opacity:1;
+      transition: opacity .2s ease;
     }
 
     h1 {
@@ -69,6 +77,22 @@
 
   <script type="module" src="./src/proof.mjs"></script>
   <script type="module" src="./src/proof-preact.mjs"></script>
+  <script>
+    // Reveal the page once the things that cause a flash have settled: web
+    // fonts loaded (proofs reflow when Fira swaps in), custom elements upgraded,
+    // and the window 'load' event (by which point KaTeX auto-render has run).
+    // A 3s fallback guarantees the page is never left blank by a slow resource.
+    Promise.race([
+      Promise.all([
+        document.fonts.ready,
+        customElements.whenDefined("proof-tree"),
+        new Promise(r => addEventListener("load", r, { once: true })),
+      ]),
+      new Promise(r => setTimeout(r, 3000)),
+    ]).then(() => requestAnimationFrame(
+      () => document.documentElement.classList.add("ready")
+    ))
+  </script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/prism.min.js" integrity="sha512-UOoJElONeUNzQbbKQbjldDf9MwOHqxNz49NNJJ1d90yp+X9edsHyJoAs6O4K19CZGaIdjI5ohK+O2y5lBTW6uQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/components/prism-haskell.min.js" integrity="sha512-Ms8C+O5PusTaICWOXF+t5OgMA4O0rNYqkWzOMXtl68aJt1bYFNBX9s8Jd99tcvHCF/JrkYjXvAxSbSUGMMR7pQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
