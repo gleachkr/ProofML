@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>ProofML editor</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira%20Sans:wght@300;400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style>
+    @font-face {
+      font-family:"Fira Logic";
+      src:url("https://cdn.jsdelivr.net/gh/gleachkr/FiraLogic/dist/FiraLogic-Regular.woff") format("woff");
+    }
+
+    html {
+      font-size:22px;
+      font-family:'Fira Sans', sans-serif;
+      font-weight:300;
+      /* hidden until fonts + custom elements settle (see the script below) */
+      opacity:0;
+    }
+    html.ready { opacity:1; transition:opacity .2s ease; }
+
+    proof-tree:not(:defined) { display:none; }
+
+    html, body { height:100%; }
+    body { margin:0; }
+    /* full-height flex column so the canvas fills the space left by the toolbar,
+       whatever the toolbar's actual height (no magic-number offset to keep in sync) */
+    #app { min-height:100vh; display:flex; flex-direction:column; }
+
+    /* --- toolbar --- */
+    .toolbar {
+      position:sticky; top:0; z-index:10;
+      display:flex; align-items:center; gap:.4rem; flex-wrap:wrap;
+      padding:.5rem .75rem;
+      background:#fff; border-bottom:1px solid #ddd;
+      font-size:.7rem;
+    }
+    .toolbar button {
+      font:inherit; cursor:pointer;
+      padding:.25em .6em; border:1px solid #cdd3da; border-radius:5px;
+      background:#f6f8fa;
+    }
+    .toolbar button:hover:not(:disabled) { background:#eaeef2; }
+    .toolbar button:disabled { opacity:.4; cursor:default; }
+    .toolbar button.attach { background:#eef5ff; border-color:#bcd6f5; }
+    .toolbar .sep { flex:0 0 1px; align-self:stretch; background:#e3e3e3; margin:0 .3rem; }
+    .toolbar .lbl { color:#888; }
+    .hint { color:#aaa; }
+
+    /* --- export dialog --- */
+    dialog.export {
+      padding:0; border:1px solid #cdd3da; border-radius:10px; box-sizing:border-box;
+      width:min(680px, 92vw); max-width:92vw; max-height:80vh;
+      box-shadow:0 12px 44px rgba(20,24,28,.22);
+    }
+    dialog.export::backdrop { background:rgba(20,24,28,.32); }
+    .export .sheet { display:flex; flex-direction:column; max-height:80vh; min-width:0; }
+    .export .row {
+      display:flex; align-items:center; gap:.55rem; flex-wrap:wrap;
+      padding:.6rem .85rem; border-bottom:1px solid #eee;
+    }
+    .export .row strong { font-size:.8rem; }
+    .export .row .meta { font-size:.62rem; color:#9aa3ad; }
+    .export .row .spacer { flex:1; }
+    .export .row button {
+      font:inherit; font-size:.66rem; cursor:pointer;
+      padding:.3em .8em; border:1px solid #cdd3da; border-radius:5px; background:#f6f8fa;
+    }
+    .export .row button:hover { background:#eaeef2; }
+    .export textarea {
+      box-sizing:border-box; width:100%; min-height:320px;
+      margin:0; border:0; outline:none; resize:none;
+      padding:.85rem; background:#fbfcfd; color:#24292f;
+      font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size:.7rem; line-height:1.5; white-space:pre; tab-size:2;
+    }
+
+    /* --- canvas --- */
+    /* the canvas is a tall click-to-deselect area; trees live in an inner row
+       at the top so they don't get pinned to the bottom of the viewport */
+    /* proofs (and the empty notice) sit bottom-centre, in the same spot */
+    .canvas {
+      flex:1; min-width:0; box-sizing:border-box;
+      padding:3rem 2rem;
+      display:flex; flex-direction:column;
+      justify-content:flex-end; align-items:safe center;
+      /* wide proofs scroll within the canvas instead of widening the page;
+         `safe center` keeps the left edge reachable when a proof overflows */
+      overflow-x:auto;
+    }
+    .trees {
+      display:flex; flex-wrap:wrap; gap:2.5rem;
+      align-items:flex-end;        /* baseline-align every tree's conclusion */
+      justify-content:center;
+    }
+    .empty { margin:0; text-align:center; color:#aaa; }
+    figure.standard-proof {
+      margin:0;
+      font-size:1.25rem;
+      font-family:'Fira Logic', monospace;
+      --kern-left:20px;
+      --kern-right:25px;
+    }
+
+    /* --- editable formulas --- */
+    .fx { outline:none; min-width:.6em; display:inline-block; border-radius:2px; }
+    .fx:empty::before { content:attr(data-ph); color:#c4c4c4; }
+    .fx.rule { font-size:.85em; }
+
+    /* caret focus — a bright ring that always follows the element you're typing in */
+    .fx:focus { background:#eaf3fd; box-shadow:0 0 0 2px #4a90d9; }
+
+    /* node selection (the toolbar's target) — deliberately subtle and dashed so it
+       reads as "selected node", not "cursor is here" (which is the focus ring above) */
+    proof-proposition.np.sel { outline:1px dashed #9bbbe0; outline-offset:4px; border-radius:2px; }
+    /* the inference label, when *it* (not the conclusion) is the selected part */
+    .rule-slot.sel { outline:1px dashed #9bbbe0; outline-offset:3px; border-radius:2px; }
+
+    /* --- drag-and-drop reparenting --- */
+    /* np = a node's conclusion/leaf proposition: position context for the grip */
+    proof-proposition.np { position:relative; }
+    .grip {
+      position:absolute; left:-1em; top:50%; transform:translateY(-50%);
+      color:#b8bdc4; font-size:.6em; line-height:1; cursor:grab; user-select:none;
+      opacity:0; transition:opacity .12s;
+    }
+    .grip:active { cursor:grabbing; }
+    /* reveal the handle on hover or when the node is selected */
+    proof-proposition.np:hover > .grip,
+    proof-proposition.np.sel > .grip { opacity:.85; }
+    /* the node currently hovered as a drop target */
+    proof-proposition.np.drop-target {
+      outline:2px dashed #4a90d9; outline-offset:4px; border-radius:3px; background:#eaf3fd;
+    }
+
+    /* plain-DOM drag-image proxy (lives off-screen in <body>, snapshotted as the
+       drag ghost — works for nested subtrees, which can't be snapshotted live) */
+    .drag-ghost {
+      position:fixed; top:0; left:-9999px; pointer-events:none; opacity:.95;
+      display:inline-flex; flex-direction:column; align-items:center;
+      padding:.25em 1.5em .25em .6em;  /* right pad leaves room for the ⋮ label */
+      white-space:nowrap; font-family:'Fira Logic', monospace; font-size:1.2rem;
+      background:#fff; border:1px solid #9bbbe0; border-radius:5px;
+      box-shadow:0 4px 14px rgba(20,24,28,.25);
+    }
+    .drag-ghost .dg-row { padding:0 .15em; }
+    .drag-ghost .dg-line { align-self:stretch; height:0; border-top:1px solid #333; margin:.1em 0; position:relative; }
+    .drag-ghost .dg-concl { text-align:center; }
+    .drag-ghost .dg-dots {
+      position:absolute; left:100%; top:50%; transform:translateY(-50%);
+      margin-left:.2em; font-size:.7em; line-height:.5; color:#555;
+    }
+
+    /* --- collapsed subproofs: structure stays in the model; this is just the
+           elided presentation (frontier leaves over a vertical-dots stem) --- */
+    proof-tree.collapsed .ghost { color:#999; }
+    .dots { cursor:pointer; font-size:1.1em; line-height:.6; letter-spacing:0; user-select:none; }
+  </style>
+
+  <script type="importmap">
+    { "imports": { "preact": "https://unpkg.com/htm/preact/index.module.js?module" } }
+  </script>
+
+  <!-- makes our HTML5 drag-and-drop work on touch devices; ?autoload self-enables -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@dragdroptouch/drag-drop-touch@2.0.3/dist/drag-drop-touch.esm.min.js?autoload"></script>
+
+  <script type="module" src="../../src/proof.mjs"></script>
+  <script type="module" src="./editor.mjs"></script>
+  <script>
+    Promise.race([
+      Promise.all([
+        document.fonts.ready,
+        customElements.whenDefined("proof-tree"),
+        new Promise(r => addEventListener("load", r, { once: true })),
+      ]),
+      new Promise(r => setTimeout(r, 3000)),
+    ]).then(() => requestAnimationFrame(
+      () => document.documentElement.classList.add("ready")
+    ))
+  </script>
+</head>
+
+<body>
+  <div id="app"></div>
+</body>
+
+</html>
