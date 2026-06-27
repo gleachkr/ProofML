@@ -18,7 +18,11 @@
     }
 
     html {
-      font-size:24px;
+      /* Everything (text AND proofs) is sized in rem, so scaling the root font
+         with the viewport shrinks wide proofs to fit small screens instead of
+         leaving them to overflow/scroll. ~24px on desktop, easing to ~15px on a
+         narrow phone; clamp() pins both ends so it never gets silly. */
+      font-size:clamp(15px, 9px + 1.65vw, 24px);
       font-family: 'Fira Sans', sans;
       font-weight:300;
       /* Hidden until fonts, custom elements, and KaTeX have settled, to avoid
@@ -46,11 +50,34 @@
 
     main {
       max-width:36rem;
+      /* this is a flex child of body; without min-width:0 it refuses to shrink
+         below its widest content (a big proof), overflowing narrow screens and
+         dragging the whole page off the left edge. Letting it shrink hands the
+         overflow to each figure's own horizontal scroll instead. */
+      min-width:0;
+      box-sizing:border-box;
+      padding:0 1rem;
     }
 
+    /* A proof can be wider than the viewport (especially on mobile). Plain
+       `justify-content:center` would overflow on BOTH sides and the left edge
+       becomes unreachable/clipped — scrolling only reaches the right. `safe
+       center` falls back to start-alignment once content overflows, keeping the
+       left edge visible, and overflow-x lets the wide proof scroll in place. */
     figure {
       display:flex;
-      justify-content:center;
+      justify-content:safe center;
+      /* the UA stylesheet gives <figure> a 40px left+right margin — ~80px of dead
+         space that shrinks the room a proof has and forces it to overflow/cramp
+         on narrow screens. Zero it horizontally (keep a little vertical rhythm). */
+      margin:1.2em 0;
+      /* `overflow-x:auto` forces overflow-y from visible to auto too (CSS won't
+         scroll one axis while leaving the other visible), turning the figure into
+         a scroll container that would clip the inference labels poking out above
+         the tree. The vertical padding gives those labels room so they're never
+         clipped; horizontal overflow still scrolls, protecting the page width. */
+      overflow-x:auto;
+      padding:0.8em 0.2em;
     }
 
     figure.standard-proof {
