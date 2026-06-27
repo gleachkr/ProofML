@@ -10,8 +10,8 @@ import { html, render, Component } from "preact"
 import katex from "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.mjs"
 
 import {
-  PUZZLES, ROOT, fnPath, argPath, bodyPath, isRedex,
-  redexes, reduceAt, derive, typeToString,
+  PUZZLES, ROOT, fnPath, argPath, bodyPath, leftPath, rightPath, scrutPath, termPath,
+  isRedex, redexes, reduceAt, derive, typeToString,
 } from "./lambda.mjs"
 
 // ---------------------------------------------------------------------------
@@ -63,29 +63,44 @@ class Game extends Component {
   }
 
   // --- interactive term banner (custom DOM, so subterms stay clickable) ---
+  // wraps the content of any redex node in a clickable pill sharing its detour's id
   termView(node, path) {
+    const content = this.termContent(node, path)
+    if (!isRedex(node)) return content
+    const hot = this.state.hoverRedexId === path
+    return html`<span class=${"redex" + (hot ? " hot" : "")} ...${this.redexProps(path)}>${content}</span>`
+  }
+  termContent(node, path) {
     switch (node.kind) {
       case "var":
         return node.name
       case "lam":
         return html`λ${node.param}:${typeToString(node.type)}.${this.termView(node.body, bodyPath(path))}`
-      case "app": {
-        const inner = html`${this.fnView(node.fn, fnPath(path))}<span class="sp"> </span>${this.argView(node.arg, argPath(path))}`
-        if (!isRedex(node)) return inner
-        const hot = this.state.hoverRedexId === path
-        return html`<span class=${"redex" + (hot ? " hot" : "")} ...${this.redexProps(path)}>${inner}</span>`
-      }
+      case "app":
+        return html`${this.fnView(node.fn, fnPath(path))}<span class="sp"> </span>${this.atomView(node.arg, argPath(path))}`
+      case "pair":
+        return html`<span class="paren">⟨</span>${this.termView(node.left, leftPath(path))}, ${this.termView(node.right, rightPath(path))}<span class="paren">⟩</span>`
+      case "fst":
+        return html`<span class="kw">fst</span> ${this.atomView(node.arg, argPath(path))}`
+      case "snd":
+        return html`<span class="kw">snd</span> ${this.atomView(node.arg, argPath(path))}`
+      case "inl":
+        return html`<span class="kw">inl</span> ${this.atomView(node.term, termPath(path))}`
+      case "inr":
+        return html`<span class="kw">inr</span> ${this.atomView(node.term, termPath(path))}`
+      case "case":
+        return html`<span class="kw">case</span> ${this.termView(node.scrut, scrutPath(path))} <span class="kw">of</span> <span class="kw">inl</span> ${node.xl} ⇒ ${this.termView(node.bodyL, leftPath(path))} <span class="paren">|</span> <span class="kw">inr</span> ${node.yr} ⇒ ${this.termView(node.bodyR, rightPath(path))}`
     }
   }
-  fnView(node, path) {   // function position: a λ needs parens; an application stays bare
-    return node.kind === "lam"
-      ? html`<span class="paren">(${this.termView(node, path)})</span>`
+  fnView(node, path) {   // function position: λ and case need parens; the rest stay bare
+    return (node.kind === "lam" || node.kind === "case")
+      ? html`<span class="paren">(</span>${this.termView(node, path)}<span class="paren">)</span>`
       : this.termView(node, path)
   }
-  argView(node, path) {  // argument position: anything but a bare variable gets parens
-    return node.kind === "var"
-      ? node.name
-      : html`<span class="paren">(${this.termView(node, path)})</span>`
+  atomView(node, path) {  // argument/prefix-operand: anything but a var or a (bracketed) pair gets parens
+    return (node.kind === "var" || node.kind === "pair")
+      ? this.termView(node, path)
+      : html`<span class="paren">(</span>${this.termView(node, path)}<span class="paren">)</span>`
   }
 
   // --- the typing derivation, as ProofML ---
@@ -98,6 +113,8 @@ class Game extends Component {
     const props = detour ? this.redexProps(node.redexId) : {}
     const label = node.rule === "→I"
       ? html`→I<sup>${node.discharge}</sup>`
+      : node.rule === "∨E"
+      ? html`∨E<sup>${node.discharges.join(",")}</sup>`
       : node.rule
     return html`<proof-tree key=${node.path} class=${detour ? "detour" + (hot ? " hot" : "") : ""} ...${props}>
       <proof-forest>${node.premises.map(p => this.view(p))}</proof-forest>
