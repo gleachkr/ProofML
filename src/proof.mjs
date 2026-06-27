@@ -152,7 +152,11 @@ class Tree extends HTMLElement {
 
     ::slotted([slot=forest]) {
       display:flex;
-      justify-content:space-around;
+      /* premises already fill the row via their min-width (conclusion/count);
+         center distributes only the small leftover to the OUTER edges, so it
+         never opens an unbordered gap between siblings (which would break the
+         inference line). space-around used to drop that leftover between them. */
+      justify-content:center;
       --prop-below:${this.propBelow}px;
     }
 
@@ -223,7 +227,7 @@ class Forest extends HTMLElement {
       this.styleSheet.textContent = `
       :host {
         display:flex;
-        justify-content:space-around;
+        justify-content:center;
         --hide-border:1;
         --border-width-internal: calc(var(--hide-border) * var(--border-width, 1px));
         --border-color-internal: var(--border-color, black);
