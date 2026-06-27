@@ -46,6 +46,17 @@ function findNode(nodes, id) {
   }
   return null
 }
+// Where `id` sits in the forest: its containing array (`siblings`), its `index`
+// in it, and its `parent` node (null for a root). Used for arrow-key navigation.
+function locate(roots, id) {
+  const walk = (nodes, parent) => {
+    const index = nodes.findIndex(n => n.id === id)
+    if (index >= 0) return { parent, siblings: nodes, index }
+    for (const n of nodes) { const hit = walk(n.premises, n); if (hit) return hit }
+    return null
+  }
+  return walk(roots, null)
+}
 // true if `id` is `n` or anywhere in its subtree (used to block cyclic drops)
 const contains = (n, id) => n.id === id || n.premises.some(p => contains(p, id))
 // pull the node with `id` out of the forest, returning [forestWithout, removedNode]
@@ -141,6 +152,57 @@ class ExportDialog extends Component {
   }
 }
 
+// ------------------------------------------------- keyboard-shortcut help ----
+// Single source of truth: drives both the help modal and the actual handler's
+// behaviour reads the same intent. A `section` row is a full-width subheading.
+const SHORTCUTS = [
+  { keys: ["?"], desc: "show / hide this help" },
+  { keys: ["n"], desc: "new tree" },
+  { keys: ["e"], desc: "export ProofML" },
+  { keys: ["⌘ / Ctrl", "Z"], desc: "undo" },
+  { keys: ["Esc"], desc: "deselect / stop editing" },
+  { section: "with a node selected" },
+  { keys: ["Enter"], desc: "edit the formula" },
+  { keys: ["p"], desc: "add a premise" },
+  { keys: ["c"], desc: "collapse / expand" },
+  { keys: ["Del"], desc: "delete the node (or just the rule, if the rule is selected)" },
+  { keys: ["↑"], desc: "select a premise above" },
+  { keys: ["↓"], desc: "select the conclusion below" },
+  { keys: ["←", "→"], desc: "select the previous / next sibling" },
+]
+
+// Native <dialog> help modal, opened/closed by the `open` prop (same pattern as
+// ExportDialog: showModal() gives us the top layer, ::backdrop and Esc for free).
+class HelpDialog extends Component {
+  componentDidMount() { this.sync() }
+  componentDidUpdate() { this.sync() }
+  sync() {
+    const d = this.base
+    if (!d) return
+    if (this.props.open && !d.open) d.showModal()
+    else if (!this.props.open && d.open) d.close()
+  }
+  render({ open, onClose }) {
+    return html`<dialog class="help" onClose=${onClose}
+      onClick=${e => { if (e.target === e.currentTarget) onClose() }}>
+      <div class="sheet">
+        <div class="row">
+          <strong>Keyboard shortcuts</strong>
+          <span class="spacer"></span>
+          <button onClick=${onClose}>close</button>
+        </div>
+        <div class="keys">
+          ${SHORTCUTS.map(s => s.section
+            ? html`<div class="sec">${s.section}</div>`
+            : html`<div class="kcell">${s.keys.map((k, i) =>
+                html`${i ? html`<span class="plus">+</span>` : null}<kbd>${k}</kbd>`)}</div>
+              <div class="dcell">${s.desc}</div>`)}
+        </div>
+      </div>
+    </dialog>`
+  }
+}
+
 // ----------------------------------------------------------- the editor -----
 class Editor extends Component {
   constructor() {
@@ -148,13 +210,80 @@ class Editor extends Component {
     // selectedPart tracks *what* about the selected node is selected: its
     // "prop" (conclusion / leaf) or its "rule" (the inference line). This lets
     // delete mean "delete this node" vs "delete just the inference" (below).
-    this.state = { roots: [starter()], selectedId: null, selectedPart: "prop", exportText: null, dropTargetId: null }
+    this.state = { roots: [starter()], selectedId: null, selectedPart: "prop", exportText: null, dropTargetId: null, helpOpen: false }
     this.history = []
     this.dragId = null // id of the subtree currently being dragged
   }
   componentDidMount() {
     const saved = localStorage.getItem(STORE)
     if (saved) { try { this.setState({ roots: JSON.parse(saved).map(reId) }) } catch {} }
+    window.addEventListener("keydown", this.onKey)
+  }
+  componentWillUnmount() { window.removeEventListener("keydown", this.onKey) }
+
+  // Global keyboard shortcuts. Care is taken not to hijack typing: while a
+  // formula (contenteditable) is focused only Esc acts (to stop editing), and a
+  // bare ⌘/Ctrl+Z is left to the browser there so native text-undo still works.
+  onKey = e => {
+    const ae = document.activeElement
+    const editing = ae && ae.isContentEditable
+    const mod = e.metaKey || e.ctrlKey
+
+    if (mod) {
+      if ((e.key === "z" || e.key === "Z") && !editing) { e.preventDefault(); this.undo() }
+      return // leave other browser combos (copy/paste/reload/native undo) alone
+    }
+    // while a modal is open let it own the keyboard; only let ? dismiss the help
+    if (document.querySelector("dialog[open]")) {
+      if (e.key === "?" && this.state.helpOpen) { e.preventDefault(); this.setState({ helpOpen: false }) }
+      return
+    }
+    if (editing) {
+      if (e.key === "Escape") { e.preventDefault(); ae.blur() }
+      return
+    }
+
+    switch (e.key) {
+      case "?": e.preventDefault(); this.setState({ helpOpen: true }); return
+      case "Escape": e.preventDefault(); this.select(null); return
+      case "n": case "N": e.preventDefault(); this.newTree(); return
+      case "e": case "E": e.preventDefault(); this.openExport(); return
+    }
+
+    const sel = this.state.selectedId && findNode(this.state.roots, this.state.selectedId)
+    if (!sel) return
+    switch (e.key) {
+      case "Enter": e.preventDefault(); this.focusFormula(sel.id); return
+      case "p": case "P": e.preventDefault(); this.addPremise(sel.id); return
+      case "c": case "C": e.preventDefault(); this.toggleCollapse(sel.id); return
+      case "Delete": case "Backspace": e.preventDefault(); this.del(sel.id); return
+      case "ArrowUp": case "ArrowDown": case "ArrowLeft": case "ArrowRight":
+        e.preventDefault(); this.navigate(sel, e.key); return
+    }
+  }
+  // Move selection through the tree. Proof trees grow upward, so ArrowUp climbs
+  // into a premise and ArrowDown drops to the parent's conclusion; ←/→ are siblings.
+  navigate(sel, key) {
+    const loc = locate(this.state.roots, sel.id)
+    if (!loc) return
+    const { parent, siblings, index } = loc
+    const target = key === "ArrowUp" ? sel.premises[0]
+      : key === "ArrowDown" ? parent
+      : key === "ArrowLeft" ? siblings[index - 1]
+      : siblings[index + 1]
+    if (target) this.select(target.id, "prop")
+  }
+  // Select a node and drop the caret into its conclusion formula (Enter to edit).
+  // The editable is rendered after the state change, so wait a frame to find it.
+  focusFormula(id) {
+    this.select(id, "prop")
+    requestAnimationFrame(() => {
+      const el = document.querySelector(".canvas .np.sel .fx")
+      if (!el) return
+      el.focus()
+      const r = document.createRange(); r.selectNodeContents(el); r.collapse(false)
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r)
+    })
   }
 
   // structural edits go through commit() so they record undo history + autosave;
@@ -309,7 +438,8 @@ class Editor extends Component {
         </div>
         ${roots.length === 0 ? html`<p class="empty">empty canvas — press “+ tree”.</p>` : null}
       </div>
-      <${ExportDialog} text=${exportText} onClose=${() => this.setState({ exportText: null })} />`
+      <${ExportDialog} text=${exportText} onClose=${() => this.setState({ exportText: null })} />
+      <${HelpDialog} open=${this.state.helpOpen} onClose=${() => this.setState({ helpOpen: false })} />`
   }
 
   toolbar(sel) {
@@ -317,6 +447,7 @@ class Editor extends Component {
       <button onClick=${() => this.newTree()}>+ tree</button>
       <button onClick=${() => this.undo()} disabled=${!this.history.length}>undo</button>
       <button onClick=${() => this.openExport()}>export ProofML</button>
+      <button class="help" title="keyboard shortcuts (?)" onClick=${() => this.setState({ helpOpen: true })}>? keys</button>
       <span class="sep"></span>
       ${sel ? html`
         <span class="lbl">node:</span>

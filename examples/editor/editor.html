@@ -81,6 +81,42 @@
       font-size:.7rem; line-height:1.5; white-space:pre; tab-size:2;
     }
 
+    /* --- shortcuts (help) dialog --- */
+    dialog.help {
+      padding:0; border:1px solid #cdd3da; border-radius:10px; box-sizing:border-box;
+      width:min(440px, 92vw); box-shadow:0 12px 44px rgba(20,24,28,.22);
+    }
+    dialog.help::backdrop { background:rgba(20,24,28,.32); }
+    .help .sheet { display:flex; flex-direction:column; }
+    .help .row {
+      display:flex; align-items:center; gap:.55rem;
+      padding:.6rem .85rem; border-bottom:1px solid #eee;
+    }
+    .help .row strong { font-size:.8rem; }
+    .help .row .spacer { flex:1; }
+    .help .row button {
+      font:inherit; font-size:.66rem; cursor:pointer;
+      padding:.3em .8em; border:1px solid #cdd3da; border-radius:5px; background:#f6f8fa;
+    }
+    .help .row button:hover { background:#eaeef2; }
+    .help .keys {
+      display:grid; grid-template-columns:max-content 1fr; gap:.5rem .9rem;
+      align-items:center; padding:.85rem 1rem; font-size:.72rem;
+    }
+    .help .keys .sec {
+      grid-column:1 / -1; color:#9aa3ad; font-size:.6rem;
+      text-transform:uppercase; letter-spacing:.05em;
+      margin-top:.4rem; padding-top:.5rem; border-top:1px solid #eee;
+    }
+    .help .keys .kcell { display:flex; align-items:center; gap:.25rem; white-space:nowrap; }
+    .help .keys .dcell { color:#444; }
+    .help .keys .plus { color:#aaa; font-size:.8em; }
+    .help kbd {
+      font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.85em; line-height:1;
+      padding:.25em .45em; background:#f6f8fa;
+      border:1px solid #cdd3da; border-bottom-width:2px; border-radius:4px; color:#24292f;
+    }
+
     /* --- canvas --- */
     /* the canvas is a tall click-to-deselect area; trees live in an inner row
        at the top so they don't get pinned to the bottom of the viewport */
