@@ -60,6 +60,19 @@
       --kern-right:25px;
     }
 
+    /* emoji are big and need a little air around the line and between siblings;
+       the rule labels are emoji too, so don't shrink them to the tiny default */
+    figure.crafting {
+      /* emoji read fine a touch smaller than the chunky size; keeping it modest
+         leaves generous whitespace between the two branches so it doesn't crowd. */
+      font-size: 1.5rem;
+      line-height: 1.15;
+      --kern-left:18px;
+      --kern-right:18px;
+      --foreign-spacing:12px;
+      --inference-size:1em;
+    }
+
     p {
       line-height:1.5;
     }
@@ -171,6 +184,36 @@
         </proof-forest>
         <div slot="inference">->E</div>
         <div slot="proposition">¬P</div><div slot="inferenece">MT</div>
+      </proof-tree>
+    </figure>
+    <p>And nothing says the things above the line have to be <em>formulas</em>. The shape—premises over a line, a conclusion below, a rule off to the side—is just as happy deriving a pickaxe as a theorem:</p>
+    <figure class="crafting">
+      <proof-tree>
+        <proof-forest>
+          <proof-tree>
+            <proof-forest>
+              <proof-tree>
+                <proof-forest>
+                  <proof-tree>
+                    <proof-forest>
+                      <proof-proposition>🌳</proof-proposition>
+                    </proof-forest>
+                    <proof-proposition>🪵</proof-proposition><div slot="inference">🪓</div>
+                  </proof-tree>
+                </proof-forest>
+                <proof-proposition>🟫🟫</proof-proposition><div slot="inference">🔨</div>
+              </proof-tree>
+            </proof-forest>
+            <proof-proposition>🥢🥢</proof-proposition><div slot="inference">🔨</div>
+          </proof-tree>
+          <proof-tree>
+            <proof-forest>
+              <proof-proposition>🪨🪨🪨</proof-proposition>
+            </proof-forest>
+            <proof-proposition>🔩🔩🔩</proof-proposition><div slot="inference">🔥</div>
+          </proof-tree>
+        </proof-forest>
+        <proof-proposition>⛏️</proof-proposition><div slot="inference">🔨</div>
       </proof-tree>
     </figure>
   </main>
