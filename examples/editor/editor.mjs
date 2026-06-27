@@ -373,10 +373,12 @@ class Editor extends Component {
       row.textContent = frontier(n).map(l => l.prop || "?").join("   ")
       // a full-width inference line; the ⋮ rides it (absolutely positioned, so it
       // doesn't shift the centering of premises/conclusion) only when internal
-      // steps are elided (depth >= 2) — mirrors the collapsed-tree view
+      // steps are elided (depth >= 2) — mirrors the collapsed-tree view. In that
+      // same elided case the line goes double, matching the collapsed double bar.
       const line = document.createElement("div")
       line.className = "dg-line"
       if (n.premises.some(p => !isLeaf(p))) {
+        line.classList.add("elided")
         const dots = document.createElement("span")
         dots.className = "dg-dots"
         dots.textContent = "⋮"

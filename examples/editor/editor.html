@@ -187,6 +187,9 @@
     }
     .drag-ghost .dg-row { padding:0 .15em; }
     .drag-ghost .dg-line { align-self:stretch; height:0; border-top:1px solid #333; margin:.1em 0; position:relative; }
+    /* when the ghost elides internal steps (the ⋮ case), double the bar to match
+       the collapsed-tree view; `double` needs >=3px to render as two lines */
+    .drag-ghost .dg-line.elided { border-top-width:3px; border-top-style:double; }
     .drag-ghost .dg-concl { text-align:center; }
     .drag-ghost .dg-dots {
       position:absolute; left:100%; top:50%; transform:translateY(-50%);
@@ -195,6 +198,14 @@
 
     /* --- collapsed subproofs: structure stays in the model; this is just the
            elided presentation (frontier leaves over a vertical-dots stem) --- */
+    /* a double inference bar marks the elided step as a derived/condensed one.
+       CSS `double` only splits into two lines at >=3px, hence the width bump.
+       Scope to the forest (not the whole collapsed tree): the bar we want is the
+       collapsed tree's own inference line, drawn by the ghost frontier's bottom
+       border. Setting the vars on proof-tree.collapsed would also leak into the
+       tree's *own* shadow, doubling the line *below* its conclusion (which really
+       belongs to the parent's inference) — not wanted. */
+    proof-tree.collapsed > proof-forest { --border-style:double; --border-width:3px; }
     proof-tree.collapsed .ghost { color:#999; }
     .dots { cursor:pointer; font-size:1.1em; line-height:.6; letter-spacing:0; user-select:none; }
   </style>
