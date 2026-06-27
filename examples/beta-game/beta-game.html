@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>β-reduction game · ProofML</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira%20Sans:wght@300;400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+
+  <style>
+    @font-face {
+      font-family:"Fira Logic";
+      src:url("https://cdn.jsdelivr.net/gh/gleachkr/FiraLogic/dist/FiraLogic-Regular.woff") format("woff");
+    }
+
+    html {
+      font-size:clamp(15px, 9px + 1.2vw, 21px);
+      font-family:'Fira Sans', sans-serif;
+      font-weight:300;
+      /* hidden until fonts + custom elements + KaTeX settle (see the script below) */
+      opacity:0;
+    }
+    html.ready { opacity:1; transition:opacity .2s ease; }
+
+    proof-tree:not(:defined) { display:none; }
+
+    body { margin:0; color:#1d2228; }
+
+    /* a normal centered block (not a flex child): it fills the viewport and caps
+       at 44rem, so on a narrow screen it shrinks to the viewport instead of
+       shrink-wrapping to its widest content and overflowing the page */
+    .wrap { max-width:44rem; margin:0 auto; box-sizing:border-box; padding:1.5rem 1rem 4rem; }
+
+    /* --- header --- */
+    h1 { font-weight:400; font-size:1.5rem; margin:0 0 .4rem; }
+    h1 .eq { color:#9aa3ad; font-weight:300; }
+    .lede { line-height:1.55; color:#3b424a; margin:.2rem 0 1.2rem; }
+    .lede code, .blurb code {
+      font-family:'Fira Logic', ui-monospace, monospace;
+      background:#f3f5f7; padding:.05em .35em; border-radius:4px; font-size:.95em;
+    }
+
+    /* --- puzzle picker --- */
+    .puzzles { display:flex; flex-wrap:wrap; gap:.4rem; margin:0 0 .6rem; }
+    .pz {
+      font:inherit; font-size:.82rem; cursor:pointer;
+      padding:.3em .7em; border:1px solid #cdd3da; border-radius:999px; background:#f6f8fa; color:#333;
+    }
+    .pz:hover { background:#eef1f4; }
+    .pz.on { background:#1d2228; border-color:#1d2228; color:#fff; }
+    .blurb { color:#6b727a; line-height:1.5; margin:.2rem 0 1.4rem; min-height:2.6em; }
+
+    /* --- the interactive term --- */
+    .term {
+      font-family:'Fira Logic', ui-monospace, monospace;
+      font-size:1.7rem; line-height:1.4; text-align:center;
+      padding:1rem .5rem; word-break:break-word;
+    }
+    .term .paren { color:#9aa3ad; }
+    .term .sp { white-space:pre; }
+    /* a clickable redex: a soft pill that brightens on hover (and when its detour
+       in the proof is hovered — both share .hot) */
+    .term .redex {
+      cursor:pointer; border-radius:6px; padding:.04em .12em;
+      background:#fff3d6; box-shadow:inset 0 0 0 1px #f0d79a;
+      transition:background .1s, box-shadow .1s;
+    }
+    .term .redex.hot { background:#ffe49e; box-shadow:inset 0 0 0 1px #e7bf57; }
+    .term .redex .redex { background:#ffe9b0; }   /* nested redex stays legible */
+
+    /* --- status / controls --- */
+    .status { display:flex; align-items:center; gap:.6rem; margin:.2rem 0 1.6rem; font-size:.85rem; }
+    .status .spacer { flex:1; }
+    .status .hint { color:#8a929b; }
+    .status .win { color:#1a7f4b; font-weight:400; }
+    .status button {
+      font:inherit; font-size:.8rem; cursor:pointer;
+      padding:.3em .75em; border:1px solid #cdd3da; border-radius:6px; background:#f6f8fa; color:#333;
+    }
+    .status button:hover:not(:disabled) { background:#eef1f4; }
+    .status button:disabled { opacity:.4; cursor:default; }
+
+    /* --- the derivation (a ProofML proof) --- */
+    figure.derivation {
+      /* `safe center` keeps the left edge reachable if a proof is wider than the
+         box; the proof then scrolls within this box. `contain:paint` is the key
+         bit: a plain overflow scroll container still leaks its content into the
+         page's scroll width (so the whole page could be swiped sideways) — paint
+         containment isolates it, so only this box scrolls, never the page. */
+      display:flex; justify-content:safe center;
+      contain:paint;
+      margin:0; padding:1.4em .4em;     /* vertical padding keeps inference labels off the scroll edge */
+      max-width:100%; box-sizing:border-box;
+      overflow-x:auto;
+      font-size:1.05rem;
+      --kern-left:16px; --kern-right:16px;
+      --inference-size:.72em;
+    }
+    figure.derivation .rule { font-family:'Fira Sans', sans-serif; color:#444; }
+    figure.derivation .rule sup { font-size:.7em; color:#7a818a; }
+
+    /* a detour (→I directly under →E ⟺ a redex): clickable, lights up with its
+       term-banner twin via the shared .hot class. outline doesn't disturb layout. */
+    proof-tree.detour { cursor:pointer; border-radius:5px; transition:background .1s; }
+    proof-tree.detour:hover, proof-tree.detour.hot { background:#fff3d6; outline:1.5px solid #f0d79a; outline-offset:2px; }
+  </style>
+
+  <script type="importmap">
+    { "imports": { "preact": "https://unpkg.com/htm/preact/index.module.js?module" } }
+  </script>
+
+  <script type="module" src="../../src/proof.mjs"></script>
+  <script type="module" src="./beta-game.mjs"></script>
+  <script>
+    // reveal once fonts, custom elements, and the load event (KaTeX/relayout) settle
+    Promise.race([
+      Promise.all([
+        document.fonts.ready,
+        customElements.whenDefined("proof-tree"),
+        new Promise(r => addEventListener("load", r, { once: true })),
+      ]),
+      new Promise(r => setTimeout(r, 3000)),
+    ]).then(() => requestAnimationFrame(
+      () => document.documentElement.classList.add("ready")
+    ))
+  </script>
+</head>
+
+<body>
+  <div id="app"></div>
+</body>
+
+</html>
