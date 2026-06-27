@@ -157,11 +157,11 @@ class Tree extends HTMLElement {
     }
 
     ::slotted([slot=proposition]) {
-      ${this.isForestInhabited() ? "" : "border-top: var(--border-width-internal-original) solid var(--border-color-internal);"}
+      ${this.isForestInhabited() ? "" : "border-top: var(--border-width-internal-original) var(--border-style-internal) var(--border-color-internal);"}
     }
 
     #prop-wrapper {
-      ${this.inForest ? "border-bottom: var(--border-width-internal) solid var(--border-color-internal);" : ""}
+      ${this.inForest ? "border-bottom: var(--border-width-internal) var(--border-style-internal) var(--border-color-internal);" : ""}
       min-width: calc(var(--prop-below) / var(--forest-count));
       display:flex;
       justify-content: center;
@@ -178,6 +178,7 @@ class Tree extends HTMLElement {
       --border-width-internal: calc(var(--border-width-internal-original) * var(--hide-border, 1));
       --border-width-internal-original: var(--border-width, 1px);
       --border-color-internal: var(--border-color, black);
+      --border-style-internal: var(--border-style, solid);
       --inference-size-internal: var(--inference-size, .6em);
       --kern-right-internal: var(--kern-right, 25px);
       --kern-left-internal: var(--kern-left, 25px);
@@ -192,12 +193,12 @@ class Tree extends HTMLElement {
     }
 
     ${!this.inForest ? "" : `:host(:not(:first-child)) #left-strut {
-      border-bottom: var(--border-width-internal) solid var(--border-color-internal);
+      border-bottom: var(--border-width-internal) var(--border-style-internal) var(--border-color-internal);
       min-width: var(--kern-left-internal);
     }`}
 
     ${!this.inForest ? "" : `:host(:not(:last-child)) #right-strut {
-      border-bottom: var(--border-width-internal) solid var(--border-color-internal);
+      border-bottom: var(--border-width-internal) var(--border-style-internal) var(--border-color-internal);
       min-width: var(--kern-right-internal);
     }`}
   `}
@@ -226,12 +227,13 @@ class Forest extends HTMLElement {
         --hide-border:1;
         --border-width-internal: calc(var(--hide-border) * var(--border-width, 1px));
         --border-color-internal: var(--border-color, black);
+        --border-style-internal: var(--border-style, solid);
         --foreign-spacing-internal: var(--foreign-spacing,15px)
       }
 
       ::slotted(proof-proposition) {
         padding: 0px 5px 0px 5px;
-        border-bottom: var(--border-width-internal) solid var(--border-color-internal);
+        border-bottom: var(--border-width-internal) var(--border-style-internal) var(--border-color-internal);
         min-width: calc(var(--prop-below) / var(--forest-count));
         display:flex;
         padding-right:var(--foreign-spacing-internal);
