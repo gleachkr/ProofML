@@ -137,9 +137,44 @@ class Tree extends HTMLElement {
     }
   }
 
+  // Stretch the premises just enough that their conclusions span this
+  // conclusion — sharing out only the *deficit*, so a narrow premise is left
+  // alone when a wide sibling already covers the line (otherwise its bar floats
+  // out past it). This works on conclusion widths (the proposition content, via
+  // getPropClientRect / a range over a leaf's content) and never on subtree
+  // widths, so a wide sub-proof can't widen the bars above it.
+  distributePremiseWidths() {
+    const forest = this.forestSlot.assignedElements()[0]
+    const premises = forest ? [...forest.children] : []
+    if (premises.length == 0) return
+    const scalefactor = this.offsetWidth / this.getBoundingClientRect().width
+    const naturals = premises.map(p => {
+      try {
+        if (typeof p.getPropClientRect == "function") return scalefactor * p.getPropClientRect().width
+        const range = document.createRange()
+        range.selectNodeContents(p)
+        return scalefactor * range.getBoundingClientRect().width
+      } catch (e) {
+        return scalefactor * p.getBoundingClientRect().width
+      }
+    })
+    const sum = naturals.reduce((a, b) => a + b, 0)
+    if (sum == 0) return   // not laid out yet — a later resize pass will set these
+    const share = Math.max(0, this.propBelow - sum) / premises.length
+    premises.forEach((p, i) => {
+      const target = Math.floor(naturals[i] + share)
+      //avoid thrashing: only rewrite when it moves meaningfully
+      if (p.propMin === undefined || Math.abs(p.propMin - target) > 5) {
+        p.propMin = target
+        p.style.setProperty("--prop-min", target + "px")
+      }
+    })
+  }
+
   handleResize() {
     this.adjustLabels()
     this.computeNodeMin()
+    this.distributePremiseWidths()
     this.styleSheet.textContent = this.getStyleContent()
   }
 
@@ -152,12 +187,9 @@ class Tree extends HTMLElement {
 
     ::slotted([slot=forest]) {
       display:flex;
-      /* premises already fill the row via their min-width (conclusion/count);
-         center distributes only the small leftover to the OUTER edges, so it
-         never opens an unbordered gap between siblings (which would break the
-         inference line). space-around used to drop that leftover between them. */
+      /* center so the small leftover from rounding goes to the outer edges
+         rather than between siblings (which would break the line). */
       justify-content:center;
-      --prop-below:${this.propBelow}px;
     }
 
     ::slotted([slot=proposition]) {
@@ -166,7 +198,9 @@ class Tree extends HTMLElement {
 
     #prop-wrapper {
       ${this.inForest ? "border-bottom: var(--border-width-internal) var(--border-style-internal) var(--border-color-internal);" : ""}
-      min-width: calc(var(--prop-below) / var(--forest-count));
+      /* width handed down by the parent's distributePremiseWidths: enough for
+         the premises to span the conclusion, but no equal-share over-stretch. */
+      min-width: var(--prop-min, 0px);
       display:flex;
       justify-content: center;
     }
@@ -238,7 +272,9 @@ class Forest extends HTMLElement {
       ::slotted(proof-proposition) {
         padding: 0px 5px 0px 5px;
         border-bottom: var(--border-width-internal) var(--border-style-internal) var(--border-color-internal);
-        min-width: calc(var(--prop-below) / var(--forest-count));
+        /* a leaf premise's share, handed down by the parent (see Tree's
+           distributePremiseWidths) — same role as #prop-wrapper's min-width. */
+        min-width: var(--prop-min, 0px);
         display:flex;
         padding-right:var(--foreign-spacing-internal);
         padding-left:var(--foreign-spacing-internal);
@@ -266,7 +302,6 @@ class Forest extends HTMLElement {
         this.dispatchEvent(new Event("proofml-forest-child-change", { "bubbles": true }))
         this.listener.disconnect()
         const elts = this.mainSlot.assignedElements()
-        this.style.setProperty("--forest-count",elts.length)
         elts.forEach(
           elt => this.listener.observe(elt)
         )
