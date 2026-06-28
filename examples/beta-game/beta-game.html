@@ -103,6 +103,10 @@
     }
     figure.derivation .rule { font-family:'Fira Sans', sans-serif; color:#444; }
     figure.derivation .rule sup { font-size:.7em; color:#7a818a; }
+    /* keep each judgement on one line: KaTeX leaves break opportunities at
+       operators/relations, so in a narrow viewport a leaf would otherwise wrap
+       across lines and the proof layout (measured per formula) gets ragged. */
+    figure.derivation .katex { white-space: nowrap; }
 
     /* a detour (→I directly under →E ⟺ a redex): clickable, lights up with its
        term-banner twin via the shared .hot class. outline doesn't disturb layout. */
