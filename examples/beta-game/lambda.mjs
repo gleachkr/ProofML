@@ -9,8 +9,15 @@
 //   ∨:  case (inl t) of inl x⇒u | inr y⇒v → u[t/x]       (∨I under ∨E)
 //
 // so re-deriving a contractum reproduces proof normalization with no separate
-// normalization engine (we do principal reductions only — no commuting
-// conversions, just as we do β without η).
+// normalization engine. Two flavours of step are modelled:
+//
+//   • principal reductions (above) — an introduction met by its own elimination.
+//   • commuting conversions — an elimination *stuck* on a ∨E, i.e. whose major
+//     premise is itself a `case`. The elimination is pushed into both branches,
+//     unblocking the principal redexes hiding inside. With sums in the calculus
+//     these are *required*: principal reductions alone do NOT reach normal form
+//     (e.g. `fst (case s of inl x ⇒ ⟨a,b⟩ | inr y ⇒ ⟨c,d⟩)` has no principal
+//     redex yet is plainly not normal). We still omit η.
 
 // ---------------------------------------------------------------------------
 // Constructors
@@ -122,9 +129,25 @@ export const isRedex = t =>
   (t.kind === "snd" && t.arg.kind === "pair") ||
   (t.kind === "case" && (t.scrut.kind === "inl" || t.scrut.kind === "inr"))
 
-// every redex in `t`, as { id, term }, in a stable left-to-right traversal
+// A commuting (permutative) conversion: an elimination whose principal premise
+// is a `case` (∨E). fst/snd of a case, a case applied as a function, and a case
+// scrutinising a case all "commute" — the outer elimination is duplicated into
+// both branches of the inner case. Disjoint from isRedex (there the principal
+// premise is an introduction, here it is a ∨E).
+export const isCommuting = t =>
+  ((t.kind === "fst" || t.kind === "snd") && t.arg.kind === "case") ||
+  (t.kind === "app" && t.fn.kind === "case") ||
+  (t.kind === "case" && t.scrut.kind === "case")
+
+// which kind of reducible position `t` is, if any — the term banner and the
+// proof both colour the two flavours differently off this.
+export const redexKindOf = t =>
+  isRedex(t) ? "principal" : isCommuting(t) ? "commuting" : null
+
+// every redex in `t`, as { id, term, kind }, in a stable left-to-right traversal
 export function redexes(t, path = ROOT, out = []) {
-  if (isRedex(t)) out.push({ id: path, term: t })
+  if (isRedex(t)) out.push({ id: path, term: t, kind: "principal" })
+  else if (isCommuting(t)) out.push({ id: path, term: t, kind: "commuting" })
   switch (t.kind) {
     case "app": redexes(t.fn, fnPath(path), out); redexes(t.arg, argPath(path), out); break
     case "lam": redexes(t.body, bodyPath(path), out); break
@@ -142,17 +165,21 @@ export function redexes(t, path = ROOT, out = []) {
 
 export const isNormal = t => redexes(t).length === 0
 
-// contract exactly the redex at `id`; returns a fresh term, original untouched
+// contract exactly the step at `id` (principal reduction or commuting
+// conversion); returns a fresh term, original untouched
 export function reduceAt(t, id, path = ROOT) {
-  if (path === id && isRedex(t)) {
-    switch (t.kind) {
-      case "app": return subst(t.fn.body, t.fn.param, t.arg)
-      case "fst": return t.arg.left
-      case "snd": return t.arg.right
-      case "case": return t.scrut.kind === "inl"
-        ? subst(t.bodyL, t.xl, t.scrut.term)
-        : subst(t.bodyR, t.yr, t.scrut.term)
+  if (path === id) {
+    if (isRedex(t)) {
+      switch (t.kind) {
+        case "app": return subst(t.fn.body, t.fn.param, t.arg)
+        case "fst": return t.arg.left
+        case "snd": return t.arg.right
+        case "case": return t.scrut.kind === "inl"
+          ? subst(t.bodyL, t.xl, t.scrut.term)
+          : subst(t.bodyR, t.yr, t.scrut.term)
+      }
     }
+    if (isCommuting(t)) return commute(t)
   }
   switch (t.kind) {
     case "app": return app(reduceAt(t.fn, id, fnPath(path)), reduceAt(t.arg, id, argPath(path)))
@@ -168,6 +195,38 @@ export function reduceAt(t, id, path = ROOT) {
       reduceAt(t.bodyR, id, rightPath(path)))
     default: return t
   }
+}
+
+// Push the outer elimination of a commuting redex into both branches of its
+// inner `case`. `c` is that inner case; `rebuild` re-wraps a branch body in the
+// outer elimination; `extraFV` are the free variables the rebuild injects into a
+// branch (so a branch binder capturing one must be α-renamed first).
+function commute(t) {
+  let c, rebuild, extraFV
+  switch (t.kind) {
+    case "fst": c = t.arg; rebuild = b => fst(b); extraFV = new Set(); break
+    case "snd": c = t.arg; rebuild = b => snd(b); extraFV = new Set(); break
+    case "app": c = t.fn; rebuild = b => app(b, t.arg); extraFV = freeVars(t.arg); break
+    case "case": {
+      c = t.scrut
+      rebuild = b => caseOf(b, t.xl, t.bodyL, t.yr, t.bodyR)
+      const l = freeVars(t.bodyL); l.delete(t.xl)
+      const r = freeVars(t.bodyR); r.delete(t.yr)
+      extraFV = union(l, r)
+      break
+    }
+  }
+  const [xl, bL] = avoidCapture(c.xl, c.bodyL, extraFV)
+  const [yr, bR] = avoidCapture(c.yr, c.bodyR, extraFV)
+  return caseOf(c.scrut, xl, rebuild(bL), yr, rebuild(bR))
+}
+
+// α-rename `binder` (and its uses in `body`) to a fresh name when it would
+// capture one of `avoid`; otherwise leave the branch untouched.
+function avoidCapture(binder, body, avoid) {
+  if (!avoid.has(binder)) return [binder, body]
+  const fresh = freshName(binder, union(avoid, freeVars(body)))
+  return [fresh, subst(body, binder, v(fresh))]
 }
 
 // ---------------------------------------------------------------------------
@@ -218,7 +277,7 @@ export function termToString(t) {
     case "snd": return `snd ${atomStr(t.arg)}`
     case "inl": return `inl ${atomStr(t.term)}`
     case "inr": return `inr ${atomStr(t.term)}`
-    case "case": return `case ${termToString(t.scrut)} of inl ${t.xl} ⇒ ${termToString(t.bodyL)} | inr ${t.yr} ⇒ ${termToString(t.bodyR)}`
+    case "case": return `case ${appLeftStr(t.scrut)} of inl ${t.xl} ⇒ ${termToString(t.bodyL)} | inr ${t.yr} ⇒ ${termToString(t.bodyR)}`
   }
 }
 const atomStr = t => t.kind === "var" ? t.name : t.kind === "pair" ? termToString(t) : `(${termToString(t)})`
@@ -235,7 +294,7 @@ export function termToTex(t) {
     case "snd": return `\\mathsf{snd}\\;${atomTex(t.arg)}`
     case "inl": return `\\mathsf{inl}\\;${atomTex(t.term)}`
     case "inr": return `\\mathsf{inr}\\;${atomTex(t.term)}`
-    case "case": return `\\mathsf{case}\\;${termToTex(t.scrut)}\\;\\mathsf{of}\\;\\mathsf{inl}\\,${texName(t.xl)}\\Rightarrow ${termToTex(t.bodyL)}\\mid \\mathsf{inr}\\,${texName(t.yr)}\\Rightarrow ${termToTex(t.bodyR)}`
+    case "case": return `\\mathsf{case}\\;${appLeftTex(t.scrut)}\\;\\mathsf{of}\\;\\mathsf{inl}\\,${texName(t.xl)}\\Rightarrow ${termToTex(t.bodyL)}\\mid \\mathsf{inr}\\,${texName(t.yr)}\\Rightarrow ${termToTex(t.bodyR)}`
   }
 }
 const atomTex = t => t.kind === "var" ? texName(t.name) : t.kind === "pair" ? termToTex(t) : `(${termToTex(t)})`
@@ -270,7 +329,7 @@ export function derive(ctx, term, path = ROOT) {
       if (fnD.type.kind !== "arrow") throw new Error(`applying a non-function: ${termToString(term.fn)}`)
       return {
         path, rule: "→E", term, type: fnD.type.to,
-        redexId: term.fn.kind === "lam" ? path : null,
+        redexId: redexKindOf(term) ? path : null, redexKind: redexKindOf(term),
         premises: [fnD, argD], judgement: judgement(term, fnD.type.to),
       }
     }
@@ -285,7 +344,7 @@ export function derive(ctx, term, path = ROOT) {
       if (d.type.kind !== "prod") throw new Error("fst of a non-product")
       return {
         path, rule: "∧E₁", term, type: d.type.left,
-        redexId: term.arg.kind === "pair" ? path : null,
+        redexId: redexKindOf(term) ? path : null, redexKind: redexKindOf(term),
         premises: [d], judgement: judgement(term, d.type.left),
       }
     }
@@ -294,7 +353,7 @@ export function derive(ctx, term, path = ROOT) {
       if (d.type.kind !== "prod") throw new Error("snd of a non-product")
       return {
         path, rule: "∧E₂", term, type: d.type.right,
-        redexId: term.arg.kind === "pair" ? path : null,
+        redexId: redexKindOf(term) ? path : null, redexKind: redexKindOf(term),
         premises: [d], judgement: judgement(term, d.type.right),
       }
     }
@@ -316,7 +375,7 @@ export function derive(ctx, term, path = ROOT) {
       if (typeToString(l.type) !== typeToString(r.type)) throw new Error("case branches disagree on type")
       return {
         path, rule: "∨E", discharges: [term.xl, term.yr], term, type: l.type,
-        redexId: (term.scrut.kind === "inl" || term.scrut.kind === "inr") ? path : null,
+        redexId: redexKindOf(term) ? path : null, redexKind: redexKindOf(term),
         premises: [s, l, r], judgement: judgement(term, l.type),
       }
     }
@@ -327,7 +386,7 @@ export function derive(ctx, term, path = ROOT) {
 // Curated puzzles. ctx types any free variables so each term stays well-typed.
 // ---------------------------------------------------------------------------
 
-const A = base("A"), B = base("B"), C = base("C")
+const A = base("A"), B = base("B"), C = base("C"), D = base("D"), E = base("E")
 
 export const PUZZLES = [
   {
@@ -377,5 +436,25 @@ export const PUZZLES = [
     blurb: "A function swapping the sides of a disjunction, applied to inl y: β, then a ∨-detour, give inr y.",
     ctx: { y: A },
     term: app(lam("s", sum(A, B), caseOf(v("s"), "x", inr(v("x"), B), "w", inl(v("w"), A))), inl(v("y"), B)),
+  },
+  {
+    id: "commute-fst", name: "Stuck fst (∨)",
+    blurb: "No detour to remove — yet it isn't normal. fst is stuck on a ∨E. A commuting conversion (blue) pushes fst into both branches, exposing the ∧-detours hidden inside; then they cancel.",
+    ctx: { s: sum(A, A), b: B },
+    term: fst(caseOf(v("s"), "x", pair(v("x"), v("b")), "y", pair(v("y"), v("b")))),
+  },
+  {
+    id: "commute-app", name: "Apply past a case (∨)",
+    blurb: "A function chosen by a case, then applied. Nothing principal can fire until the application commutes past the ∨E into both branches.",
+    ctx: { s: sum(arr(C, D), arr(C, D)), u: C },
+    term: app(caseOf(v("s"), "x", v("x"), "y", v("y")), v("u")),
+  },
+  {
+    id: "commute-case", name: "Case of a case (∨)",
+    blurb: "A case scrutinising a case. The outer ∨E commutes into the inner branches, turning two stuck eliminations into ordinary ∨-detours that then fire.",
+    ctx: { s: sum(A, A), f: arr(A, E), g: arr(A, E) },
+    term: caseOf(
+      caseOf(v("s"), "x", inl(v("x"), A), "y", inr(v("y"), A)),
+      "a", app(v("f"), v("a")), "b", app(v("g"), v("b"))),
   },
 ]

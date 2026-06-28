@@ -11,7 +11,7 @@ import katex from "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.mjs"
 
 import {
   PUZZLES, ROOT, fnPath, argPath, bodyPath, leftPath, rightPath, scrutPath, termPath,
-  isRedex, redexes, reduceAt, derive, typeToString,
+  redexKindOf, redexes, reduceAt, derive, typeToString,
 } from "./lambda.mjs"
 
 // ---------------------------------------------------------------------------
@@ -66,9 +66,11 @@ class Game extends Component {
   // wraps the content of any redex node in a clickable pill sharing its detour's id
   termView(node, path) {
     const content = this.termContent(node, path)
-    if (!isRedex(node)) return content
+    const kind = redexKindOf(node)   // "principal" | "commuting" | null
+    if (!kind) return content
     const hot = this.state.hoverRedexId === path
-    return html`<span class=${"redex" + (hot ? " hot" : "")} ...${this.redexProps(path)}>${content}</span>`
+    const cls = "redex" + (kind === "commuting" ? " commuting" : "") + (hot ? " hot" : "")
+    return html`<span class=${cls} ...${this.redexProps(path)}>${content}</span>`
   }
   termContent(node, path) {
     switch (node.kind) {
@@ -89,7 +91,7 @@ class Game extends Component {
       case "inr":
         return html`<span class="kw">inr</span> ${this.atomView(node.term, termPath(path))}`
       case "case":
-        return html`<span class="kw">case</span> ${this.termView(node.scrut, scrutPath(path))} <span class="kw">of</span> <span class="kw">inl</span> ${node.xl} ⇒ ${this.termView(node.bodyL, leftPath(path))} <span class="paren">|</span> <span class="kw">inr</span> ${node.yr} ⇒ ${this.termView(node.bodyR, rightPath(path))}`
+        return html`<span class="kw">case</span> ${this.fnView(node.scrut, scrutPath(path))} <span class="kw">of</span> <span class="kw">inl</span> ${node.xl} ⇒ ${this.termView(node.bodyL, leftPath(path))} <span class="paren">|</span> <span class="kw">inr</span> ${node.yr} ⇒ ${this.termView(node.bodyR, rightPath(path))}`
     }
   }
   fnView(node, path) {   // function position: λ and case need parens; the rest stay bare
@@ -111,12 +113,13 @@ class Game extends Component {
     const detour = !!node.redexId
     const hot = detour && this.state.hoverRedexId === node.redexId
     const props = detour ? this.redexProps(node.redexId) : {}
+    const cls = detour ? "detour " + node.redexKind + (hot ? " hot" : "") : ""
     const label = node.rule === "→I"
       ? html`→I<sup>${node.discharge}</sup>`
       : node.rule === "∨E"
       ? html`∨E<sup>${node.discharges.join(",")}</sup>`
       : node.rule
-    return html`<proof-tree key=${node.path} class=${detour ? "detour" + (hot ? " hot" : "") : ""} ...${props}>
+    return html`<proof-tree key=${node.path} class=${cls} ...${props}>
       <proof-forest>${node.premises.map(p => this.view(p))}</proof-forest>
       <proof-proposition><${Tex} tex=${node.judgement.tex} /></proof-proposition>
       <div slot="inference" class="rule">${label}</div>
@@ -134,8 +137,8 @@ class Game extends Component {
     return html`
       <div class="wrap">
         <header>
-          <h1>β-reduction <span class="eq">=</span> proof normalization</h1>
-          <p class="lede">${html`A typed λ-term's typing derivation `}<em>is</em>${html` a proof. A redex `}<code>(λx.t) u</code>${html` is an introduce-then-eliminate `}<em>detour</em>${html` (an →I sitting right under an →E); β-reducing it removes the detour — that's proof `}<em>normalization</em>${html`. Click a redex — in the term or in the proof — to take a step.`}</p>
+          <h1>reduction <span class="eq">=</span> proof normalization</h1>
+          <p class="lede">A typed λ-term's typing derivation <em>is</em> a proof. Most redexes are <em>detours</em> — an introduction sitting right under its elimination (e.g. <code>(λx.t) u</code>, an →I under →E); reducing one removes the detour. But with sums an elimination can get <em>stuck</em> on a ∨E with no detour to remove: a <em>commuting conversion</em> <span class="comm-key">(blue)</span> pushes it into both branches, unblocking the detours hiding inside. Either way the proof <em>normalizes</em>. Click a highlighted redex — in the term or the proof — to take a step.</p>
         </header>
 
         <nav class="puzzles">
