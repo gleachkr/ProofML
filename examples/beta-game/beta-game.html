@@ -64,20 +64,6 @@
     .term .paren { color:#9aa3ad; }
     .term .kw { color:#3a7ca5; }   /* fst / snd / inl / inr / case / of */
     .term .sp { white-space:pre; }
-    /* a clickable redex: a soft pill that brightens on hover (and when its detour
-       in the proof is hovered — both share .hot) */
-    .term .redex {
-      cursor:pointer; border-radius:6px; padding:.04em .12em;
-      background:#fff3d6; box-shadow:inset 0 0 0 1px #f0d79a;
-      transition:background .1s, box-shadow .1s;
-    }
-    .term .redex.hot { background:#ffe49e; box-shadow:inset 0 0 0 1px #e7bf57; }
-    .term .redex .redex { background:#ffe9b0; }   /* nested redex stays legible */
-    /* commuting conversions get a cool (blue) palette, distinct from the amber of
-       principal detours — the lede's "(blue)" cue points here. */
-    .term .redex.commuting { background:#dce9fb; box-shadow:inset 0 0 0 1px #aac6ee; }
-    .term .redex.commuting.hot { background:#c3d9f7; box-shadow:inset 0 0 0 1px #7aa6e0; }
-    .term .redex.commuting .redex { background:#e7f0fc; }
 
     /* --- status / controls --- */
     .status { display:flex; align-items:center; gap:.6rem; margin:.2rem 0 1.6rem; font-size:.85rem; }
@@ -90,6 +76,12 @@
     }
     .status button:hover:not(:disabled) { background:#eef1f4; }
     .status button:disabled { opacity:.4; cursor:default; }
+    /* segmented terms/propositions switch: two fused buttons, active one dark */
+    .viewpick { display:inline-flex; }
+    .viewpick button { border-radius:0; position:relative; }
+    .viewpick button:first-child { border-radius:6px 0 0 6px; }
+    .viewpick button:last-child { border-radius:0 6px 6px 0; margin-left:-1px; }
+    .viewpick button.on { background:#1d2228; border-color:#1d2228; color:#fff; z-index:1; }
 
     /* --- the derivation (a ProofML proof) --- */
     figure.derivation {
@@ -114,12 +106,17 @@
        across lines and the proof layout (measured per formula) gets ragged. */
     figure.derivation .katex { white-space: nowrap; }
 
-    /* a detour (→I directly under →E ⟺ a redex): clickable, lights up with its
-       term-banner twin via the shared .hot class. outline doesn't disturb layout. */
-    proof-tree.detour { cursor:pointer; border-radius:5px; transition:background .1s; }
-    proof-tree.detour:hover, proof-tree.detour.hot { background:#fff3d6; outline:1.5px solid #f0d79a; outline-offset:2px; }
-    /* a commuting node (an elimination stuck on a ∨E) lights up blue to match its term twin */
-    proof-tree.detour.commuting:hover, proof-tree.detour.commuting.hot { background:#dce9fb; outline-color:#aac6ee; }
+    /* Every conclusion formula is a click target. A NEUTRAL hover affordance —
+       identical for every formula — says "click a formula" without revealing which
+       one is the detour (finding it is the game). Clicking the right one (a cut /
+       maximal formula, or the ∨E a stuck elim rests on) fires the step; clicking a
+       wrong one bubbles to the figure and shakes it. */
+    figure.derivation { cursor:pointer; }
+    /* round only the TOP corners: a leaf's inference line is a border-bottom on
+       this very element (Forest's ::slotted rule), so rounding the bottom corners
+       would curl the line's ends. Top-only keeps the line straight. */
+    figure.derivation proof-proposition { border-radius:5px 5px 0 0; transition:background .12s; }
+    figure.derivation proof-proposition:hover { background:#eef1f4; }
   </style>
 
   <script type="importmap">

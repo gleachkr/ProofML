@@ -302,80 +302,112 @@ const appLeftTex = t => (t.kind === "lam" || t.kind === "case") ? `(${termToTex(
 
 // ---------------------------------------------------------------------------
 // Typing derivation. ctx maps free-variable name → type. Each node carries its
-// judgement as `term : type`. A detour node (an elimination sitting directly on
-// the matching introduction) gets `redexId` set to its path, flagging it clickable.
+// judgement as `term : type`. When an elimination is reducible (a principal redex
+// or a commuting conversion) we tag its MAJOR PREMISE (premises[0]) with `cutId`
+// (= the redex's path) and `cutKind`. That premise's conclusion is the formula the
+// player clicks to fire the step: the maximal formula of a detour (the conclusion
+// of an introduction sitting right under its elimination) or, for a commuting
+// conversion, the ∨E conclusion a stuck elimination rests on. The elimination node
+// still records `redexId`/`redexKind` (used for counting reducible positions).
 // ---------------------------------------------------------------------------
 
 const judgement = (term, type) => ({
   tex: `${termToTex(term)} : ${typeToTex(type)}`,
   text: `${termToString(term)} : ${typeToString(type)}`,
+  propTex: typeToTex(type),          // propositions-only view: just the formula
+  propText: typeToString(type),
 })
 
-export function derive(ctx, term, path = ROOT) {
+// `labels` is a mutable counter numbering the discharging rules (→I, ∨E) in
+// traversal order; `binders` maps an in-scope bound variable to the label of the
+// rule that discharges its assumption. A leaf for a bound variable carries that
+// label as `dischargeIndex`, so the UI can render it bracketed — [x : A]¹ — tied
+// to its →I¹/∨E¹. Leaves for ctx variables (open assumptions) stay unbracketed.
+export function derive(ctx, term) {
+  return deriveIn(ctx, term, ROOT, { count: 0 }, {})
+}
+
+function deriveIn(ctx, term, path, labels, binders) {
   switch (term.kind) {
     case "var": {
       const type = ctx[term.name]
       if (!type) throw new Error(`unbound variable: ${term.name}`)
-      return { path, rule: "var", term, type, premises: [], judgement: judgement(term, type) }
+      return {
+        path, rule: "var", term, type, premises: [], judgement: judgement(term, type),
+        dischargeIndex: binders[term.name] ?? null,
+      }
     }
     case "lam": {
-      const premise = derive({ ...ctx, [term.param]: term.type }, term.body, bodyPath(path))
+      const label = ++labels.count
+      const premise = deriveIn({ ...ctx, [term.param]: term.type }, term.body, bodyPath(path),
+        labels, { ...binders, [term.param]: label })
       const type = arr(term.type, premise.type)
-      return { path, rule: "→I", discharge: term.param, term, type, premises: [premise], judgement: judgement(term, type) }
+      return { path, rule: "→I", discharge: term.param, dischargeLabel: label, term, type, premises: [premise], judgement: judgement(term, type) }
     }
     case "app": {
-      const fnD = derive(ctx, term.fn, fnPath(path))
-      const argD = derive(ctx, term.arg, argPath(path))
+      const fnD = deriveIn(ctx, term.fn, fnPath(path), labels, binders)
+      const argD = deriveIn(ctx, term.arg, argPath(path), labels, binders)
       if (fnD.type.kind !== "arrow") throw new Error(`applying a non-function: ${termToString(term.fn)}`)
+      const kind = redexKindOf(term)
+      if (kind) { fnD.cutId = path; fnD.cutKind = kind }
       return {
         path, rule: "→E", term, type: fnD.type.to,
-        redexId: redexKindOf(term) ? path : null, redexKind: redexKindOf(term),
+        redexId: kind ? path : null, redexKind: kind,
         premises: [fnD, argD], judgement: judgement(term, fnD.type.to),
       }
     }
     case "pair": {
-      const l = derive(ctx, term.left, leftPath(path))
-      const r = derive(ctx, term.right, rightPath(path))
+      const l = deriveIn(ctx, term.left, leftPath(path), labels, binders)
+      const r = deriveIn(ctx, term.right, rightPath(path), labels, binders)
       const type = prod(l.type, r.type)
       return { path, rule: "∧I", term, type, premises: [l, r], judgement: judgement(term, type) }
     }
     case "fst": {
-      const d = derive(ctx, term.arg, argPath(path))
+      const d = deriveIn(ctx, term.arg, argPath(path), labels, binders)
       if (d.type.kind !== "prod") throw new Error("fst of a non-product")
+      const kind = redexKindOf(term)
+      if (kind) { d.cutId = path; d.cutKind = kind }
       return {
         path, rule: "∧E₁", term, type: d.type.left,
-        redexId: redexKindOf(term) ? path : null, redexKind: redexKindOf(term),
+        redexId: kind ? path : null, redexKind: kind,
         premises: [d], judgement: judgement(term, d.type.left),
       }
     }
     case "snd": {
-      const d = derive(ctx, term.arg, argPath(path))
+      const d = deriveIn(ctx, term.arg, argPath(path), labels, binders)
       if (d.type.kind !== "prod") throw new Error("snd of a non-product")
+      const kind = redexKindOf(term)
+      if (kind) { d.cutId = path; d.cutKind = kind }
       return {
         path, rule: "∧E₂", term, type: d.type.right,
-        redexId: redexKindOf(term) ? path : null, redexKind: redexKindOf(term),
+        redexId: kind ? path : null, redexKind: kind,
         premises: [d], judgement: judgement(term, d.type.right),
       }
     }
     case "inl": {
-      const d = derive(ctx, term.term, termPath(path))
+      const d = deriveIn(ctx, term.term, termPath(path), labels, binders)
       const type = sum(d.type, term.other)
       return { path, rule: "∨I₁", term, type, premises: [d], judgement: judgement(term, type) }
     }
     case "inr": {
-      const d = derive(ctx, term.term, termPath(path))
+      const d = deriveIn(ctx, term.term, termPath(path), labels, binders)
       const type = sum(term.other, d.type)
       return { path, rule: "∨I₂", term, type, premises: [d], judgement: judgement(term, type) }
     }
     case "case": {
-      const s = derive(ctx, term.scrut, scrutPath(path))
+      const s = deriveIn(ctx, term.scrut, scrutPath(path), labels, binders)
       if (s.type.kind !== "sum") throw new Error("case on a non-sum")
-      const l = derive({ ...ctx, [term.xl]: s.type.left }, term.bodyL, leftPath(path))
-      const r = derive({ ...ctx, [term.yr]: s.type.right }, term.bodyR, rightPath(path))
+      const label = ++labels.count   // one rule, one label — both branch assumptions share it
+      const l = deriveIn({ ...ctx, [term.xl]: s.type.left }, term.bodyL, leftPath(path),
+        labels, { ...binders, [term.xl]: label })
+      const r = deriveIn({ ...ctx, [term.yr]: s.type.right }, term.bodyR, rightPath(path),
+        labels, { ...binders, [term.yr]: label })
       if (typeToString(l.type) !== typeToString(r.type)) throw new Error("case branches disagree on type")
+      const kind = redexKindOf(term)
+      if (kind) { s.cutId = path; s.cutKind = kind }
       return {
-        path, rule: "∨E", discharges: [term.xl, term.yr], term, type: l.type,
-        redexId: redexKindOf(term) ? path : null, redexKind: redexKindOf(term),
+        path, rule: "∨E", discharges: [term.xl, term.yr], dischargeLabel: label, term, type: l.type,
+        redexId: kind ? path : null, redexKind: kind,
         premises: [s, l, r], judgement: judgement(term, l.type),
       }
     }
@@ -439,7 +471,7 @@ export const PUZZLES = [
   },
   {
     id: "commute-fst", name: "Stuck fst (∨)",
-    blurb: "No detour to remove — yet it isn't normal. fst is stuck on a ∨E. A commuting conversion (blue) pushes fst into both branches, exposing the ∧-detours hidden inside; then they cancel.",
+    blurb: "No detour to remove — yet it isn't normal. fst is stuck on a ∨E. A commuting conversion pushes fst into both branches, exposing the ∧-detours hidden inside; then they cancel.",
     ctx: { s: sum(A, A), b: B },
     term: fst(caseOf(v("s"), "x", pair(v("x"), v("b")), "y", pair(v("y"), v("b")))),
   },

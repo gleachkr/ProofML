@@ -11,7 +11,7 @@ import katex from "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.mjs"
 
 import {
   PUZZLES, ROOT, fnPath, argPath, bodyPath, leftPath, rightPath, scrutPath, termPath,
-  redexKindOf, redexes, reduceAt, derive, typeToString,
+  redexes, reduceAt, derive, typeToString,
 } from "./lambda.mjs"
 
 // ---------------------------------------------------------------------------
@@ -35,43 +35,49 @@ class Game extends Component {
   constructor() {
     super()
     const puzzle = PUZZLES[0]
-    this.state = { puzzleId: puzzle.id, term: puzzle.term, history: [], hoverRedexId: null }
+    // view: "terms" shows judgements (term : type); "props" shows just the
+    // formulas — a pure natural-deduction proof, where the [A]¹ discharge
+    // brackets do all the disambiguation work.
+    this.state = { puzzleId: puzzle.id, term: puzzle.term, history: [], view: "terms" }
   }
 
   puzzle() { return PUZZLES.find(p => p.id === this.state.puzzleId) }
 
   // --- edit ops ---
   reduce(id) {
-    this.setState(s => ({
-      term: reduceAt(s.term, id),
-      history: [...s.history, s.term],
-      hoverRedexId: null,
-    }))
-  }
-  back() { this.setState(s => s.history.length ? { term: s.history[s.history.length - 1], history: s.history.slice(0, -1), hoverRedexId: null } : null) }
-  reset() { this.setState(s => ({ term: this.puzzle().term, history: [], hoverRedexId: null })) }
-  pick(id) { const p = PUZZLES.find(p => p.id === id); this.setState({ puzzleId: id, term: p.term, history: [], hoverRedexId: null }) }
-  hover(id) { this.setState({ hoverRedexId: id }) }
-
-  // handlers shared by a redex span (term) and its detour node (proof)
-  redexProps(id) {
-    return {
-      onClick: e => { e.stopPropagation(); this.reduce(id) },
-      onMouseEnter: () => this.hover(id),
-      onMouseLeave: () => this.hover(null),
-    }
+    this.flashPath = id   // tint what the step rewrote, once the new proof is in
+    this.setState(s => ({ term: reduceAt(s.term, id), history: [...s.history, s.term] }))
   }
 
-  // --- interactive term banner (custom DOM, so subterms stay clickable) ---
-  // wraps the content of any redex node in a clickable pill sharing its detour's id
-  termView(node, path) {
-    const content = this.termContent(node, path)
-    const kind = redexKindOf(node)   // "principal" | "commuting" | null
-    if (!kind) return content
-    const hot = this.state.hoverRedexId === path
-    const cls = "redex" + (kind === "commuting" ? " commuting" : "") + (hot ? " hot" : "")
-    return html`<span class=${cls} ...${this.redexProps(path)}>${content}</span>`
+  // After a reduction the re-derived proof appears instantly; briefly tint the
+  // subtree at the rewritten position (the contractum — including any grafted
+  // copies of the argument, which land inside it) so the change is followable.
+  componentDidUpdate() {
+    if (!this.flashPath) return
+    const el = this.figureEl?.querySelector(`[data-path="${this.flashPath}"]`)
+    this.flashPath = null
+    el?.animate(
+      [{ background: "#ffe9b0" }, { background: "rgba(255,233,176,0)" }],
+      { duration: 900, easing: "ease-out" },
+    )
   }
+  back() { this.setState(s => s.history.length ? { term: s.history[s.history.length - 1], history: s.history.slice(0, -1) } : null) }
+  reset() { this.setState(() => ({ term: this.puzzle().term, history: [] })) }
+  pick(id) { const p = PUZZLES.find(p => p.id === id); this.setState({ puzzleId: id, term: p.term, history: [] }) }
+
+  // a click in the proof that missed a detour formula: shake the derivation
+  // (the only feedback — there are no hints to which formula is the detour)
+  wrongPick() {
+    this.figureEl?.animate(
+      [{ transform: "translateX(0)" }, { transform: "translateX(-5px)" }, { transform: "translateX(5px)" },
+       { transform: "translateX(-4px)" }, { transform: "translateX(3px)" }, { transform: "translateX(0)" }],
+      { duration: 300, easing: "ease-in-out" },
+    )
+  }
+
+  // --- the term banner: a non-interactive read-out of the current term (the
+  // reduction is driven from the proof now), recursive so parenthesization holds ---
+  termView(node, path) { return this.termContent(node, path) }
   termContent(node, path) {
     switch (node.kind) {
       case "var":
@@ -106,22 +112,31 @@ class Game extends Component {
   }
 
   // --- the typing derivation, as ProofML ---
+  // Every conclusion formula is a click target (a neutral hover affordance, styled
+  // in CSS, signals this without giving the answer away). A node tagged `cutId` is
+  // a major premise whose conclusion is a detour formula: clicking it fires the
+  // step. Any other formula (or a miss) bubbles to the figure and shakes — there is
+  // no highlight saying which one is the detour. That's the puzzle.
+  // the judgement tex for a node under the current view; a leaf discharged by an
+  // →I/∨E below is bracketed and labelled to match that rule: [x : A]¹ / [A]¹
+  texFor(node) {
+    const base = this.state.view === "props" ? node.judgement.propTex : node.judgement.tex
+    return node.dischargeIndex ? `[${base}]^{${node.dischargeIndex}}` : base
+  }
+
   view(node) {
     if (node.premises.length === 0)                       // a leaf assumption (var)
-      return html`<proof-proposition key=${node.path}><${Tex} tex=${node.judgement.tex} /></proof-proposition>`
+      return html`<proof-proposition key=${node.path} data-path=${node.path}><${Tex} tex=${this.texFor(node)} /></proof-proposition>`
 
-    const detour = !!node.redexId
-    const hot = detour && this.state.hoverRedexId === node.redexId
-    const props = detour ? this.redexProps(node.redexId) : {}
-    const cls = detour ? "detour " + node.redexKind + (hot ? " hot" : "") : ""
-    const label = node.rule === "→I"
-      ? html`→I<sup>${node.discharge}</sup>`
-      : node.rule === "∨E"
-      ? html`∨E<sup>${node.discharges.join(",")}</sup>`
+    const onProp = node.cutId
+      ? e => { e.stopPropagation(); this.reduce(node.cutId) }
+      : null
+    const label = node.rule === "→I" || node.rule === "∨E"
+      ? html`${node.rule}<sup>${node.dischargeLabel}</sup>`
       : node.rule
-    return html`<proof-tree key=${node.path} class=${cls} ...${props}>
+    return html`<proof-tree key=${node.path} data-path=${node.path}>
       <proof-forest>${node.premises.map(p => this.view(p))}</proof-forest>
-      <proof-proposition><${Tex} tex=${node.judgement.tex} /></proof-proposition>
+      <proof-proposition onClick=${onProp}><${Tex} tex=${this.texFor(node)} /></proof-proposition>
       <div slot="inference" class="rule">${label}</div>
     </proof-tree>`
   }
@@ -138,7 +153,7 @@ class Game extends Component {
       <div class="wrap">
         <header>
           <h1>reduction <span class="eq">=</span> proof normalization</h1>
-          <p class="lede">A typed λ-term's typing derivation <em>is</em> a proof. Most redexes are <em>detours</em> — an introduction sitting right under its elimination (e.g. <code>(λx.t) u</code>, an →I under →E); reducing one removes the detour. But with sums an elimination can get <em>stuck</em> on a ∨E with no detour to remove: a <em>commuting conversion</em> <span class="comm-key">(blue)</span> pushes it into both branches, unblocking the detours hiding inside. Either way the proof <em>normalizes</em>. Click a highlighted redex — in the term or the proof — to take a step.</p>
+          <p class="lede">A typed λ-term's typing derivation <em>is</em> a proof, and reduction is the removal of <em>detours</em>. A detour is a formula <strong>introduced and then immediately eliminated</strong> — a <em>maximal formula</em>, like an <code>→I</code> whose conclusion is the major premise of an <code>→E</code>. With sums there's also the <span class="comm-key">stuck</span> case: an elimination resting on a <span class="comm-key">∨E</span>, cleared by a commuting conversion. <strong>Your move:</strong> hunt the detour <em>in the proof</em> and click the formula it turns on — the one on the inference line just under the elimination that consumes it. Right formula, the step fires; wrong one, the proof shakes. The term up top is just a live read-out — and you can switch the proof to <em>propositions</em> only, where the bracketed assumptions <code>[A]¹</code> and their rule labels do all the bookkeeping.</p>
         </header>
 
         <nav class="puzzles">
@@ -146,18 +161,21 @@ class Game extends Component {
         </nav>
         <p class="blurb">${puzzle.blurb}</p>
 
-        <div class="term" onMouseLeave=${() => this.hover(null)}>${this.termView(term, ROOT)}</div>
+        <div class="term">${this.termView(term, ROOT)}</div>
 
         <div class="status">
           ${normal
             ? html`<span class="win">✓ normal form — ${steps} step${steps === 1 ? "" : "s"} 🎉</span>`
-            : html`<span class="hint">${rs.length} redex${rs.length === 1 ? "" : "es"} — click one to reduce</span>`}
+            : html`<span class="hint">${rs.length} detour${rs.length === 1 ? "" : "s"} left — click the formula under its elimination</span>`}
           <span class="spacer"></span>
+          <span class="viewpick">
+            <button class=${this.state.view === "terms" ? "on" : ""} onClick=${() => this.setState({ view: "terms" })}>terms</button><button class=${this.state.view === "props" ? "on" : ""} onClick=${() => this.setState({ view: "props" })}>propositions</button>
+          </span>
           <button onClick=${() => this.back()} disabled=${steps === 0}>↶ step back</button>
           <button onClick=${() => this.reset()} disabled=${steps === 0}>reset</button>
         </div>
 
-        <figure class="derivation">${this.view(deriv)}</figure>
+        <figure class="derivation" ref=${el => this.figureEl = el} onClick=${() => this.wrongPick()}>${this.view(deriv)}</figure>
       </div>`
   }
 }
