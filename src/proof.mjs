@@ -184,6 +184,12 @@ class Tree extends HTMLElement {
       if (p.propMin === undefined || Math.abs(p.propMin - target) > 5) {
         p.propMin = target
         p.style.setProperty("--prop-min", target + "px")
+        // A parent-driven width change doesn't reliably re-fire the premise's
+        // ResizeObserver, so recompute its layout once the new width is in.
+        // Bounded: the guard above stops firing once widths converge.
+        if (typeof p.handleResize == "function") {
+          requestAnimationFrame(() => p.handleResize())
+        }
       }
     })
   }
