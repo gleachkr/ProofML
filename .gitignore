@@ -1,0 +1,5 @@
+# local dev tooling — not part of the published library
+/dev/
+*.png
+CLAUDE.md
+.direnv
