@@ -109,14 +109,31 @@ class Tree extends HTMLElement {
 
     const offsetToProp = this.getPropClientRect().right - rootbox.right
 
-    if (stems.length == 0) {
-      this.inferenceOffsetX = offsetToProp
+    // Measure each premise's *conclusion line*, not its subtree. For a leaf
+    // premise (a bare proof-proposition) its own box is that line; for a
+    // proof-tree premise it's the inner prop-wrapper. If a proof-tree premise
+    // hasn't run connectedCallback yet (propWrapper still undefined — the
+    // usual state the first time a forest is created), we must NOT fall back
+    // to its whole-subtree box. Skip such a premise and schedule a recompute
+    // for once it's initialized, so the label lands correctly on first
+    // creation instead of only after a later resize.
+    let pending = false
+    const stemboxes = stems.map(elt => {
+      if (elt.tagName == "PROOF-TREE") {
+        if (elt.propWrapper) return elt.propWrapper.getBoundingClientRect()
+        pending = true
+        return null
+      }
+      return elt.getBoundingClientRect()
+    }).filter(Boolean)
+
+    if (stemboxes.length == 0) {
+      this.inferenceOffsetX = offsetToProp * scalefactor
     } else {
-      const stembox = stems
-        .map(elt => elt.propWrapper?.getBoundingClientRect() || elt.getBoundingClientRect())
-        .reduce(mergeBoxes)
+      const stembox = stemboxes.reduce(mergeBoxes)
       this.inferenceOffsetX = Math.max(offsetToProp, stembox.right - rootbox.right) * scalefactor
     }
+    if (pending) requestAnimationFrame(() => this.handleResize())
 
     const labels = this.inferenceSlot.assignedElements()
     if (labels.length == 0) {
